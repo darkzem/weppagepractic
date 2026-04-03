@@ -45,6 +45,17 @@ const exportSpritesheetVerticalButton = document.getElementById("exportSpriteshe
 const exportSpritesheetWrappedButton = document.getElementById("exportSpritesheetWrapped");
 const previewButton = document.getElementById("renderPreview");
 
+const pngExportPanel = document.getElementById("pngExportPanel");
+const pngExportFilenameInput = document.getElementById("pngExportFilename");
+const pngExportApplyButton = document.getElementById("pngExportApply");
+const pngExportCloseButton = document.getElementById("pngExportClose");
+const pngScale1Input = document.getElementById("pngScale1");
+const pngScale2Input = document.getElementById("pngScale2");
+const pngScale4Input = document.getElementById("pngScale4");
+const pngScale8Input = document.getElementById("pngScale8");
+const pngScale16Input = document.getElementById("pngScale16");
+const pngScale32Input = document.getElementById("pngScale32");
+
 const canvasSizeSelector = document.getElementById("canvasSize");
 const colorPicker = document.getElementById("colorPicker");
 const brushSelect = document.getElementById("brushSelect");
@@ -1705,6 +1716,11 @@ function buildCustomBrushFromSelectionPixels() {
         return null;
     }
 
+    const useMinX = customBrushPixelPerfectMode ? minX : 0;
+    const useMinY = customBrushPixelPerfectMode ? minY : 0;
+    const useMaxX = customBrushPixelPerfectMode ? maxX : (selectionWidth - 1);
+    const useMaxY = customBrushPixelPerfectMode ? maxY : (selectionHeight - 1);
+
     const pixels = [];
 
     for (const pixel of selectionPixels) {
@@ -1712,8 +1728,8 @@ function buildCustomBrushFromSelectionPixels() {
         if (!color) continue;
 
         pixels.push({
-            x: pixel.x - minX,
-            y: pixel.y - minY,
+            x: pixel.x - useMinX,
+            y: pixel.y - useMinY,
             color: normalizeColor(color)
         });
     }
@@ -1723,8 +1739,8 @@ function buildCustomBrushFromSelectionPixels() {
     }
 
     return {
-        width: maxX - minX + 1,
-        height: maxY - minY + 1,
+        width: useMaxX - useMinX + 1,
+        height: useMaxY - useMinY + 1,
         pixels
     };
 }
@@ -2816,6 +2832,22 @@ function getDefaultProjectFilename() {
     return `pixel-hammer-project-${GRID_SIZE}x${GRID_SIZE}${PROJECT_FILE_EXTENSION}`;
 }
 
+function promptDownloadFilename(defaultFilename, extension = "") {
+    const response = prompt("File name:", defaultFilename);
+    if (response === null) return null;
+
+    const trimmed = response.trim();
+    if (!trimmed) {
+        return defaultFilename;
+    }
+
+    if (extension && !trimmed.toLowerCase().endsWith(extension.toLowerCase())) {
+        return `${trimmed}${extension}`;
+    }
+
+    return trimmed;
+}
+
 function downloadTextFile(text, filename, mimeType = "text/plain") {
     const blob = new Blob([text], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -2837,8 +2869,11 @@ function exportProjectFile() {
 
     const projectData = createProjectData();
     const projectText = JSON.stringify(projectData, null, 2);
+    const filename = promptDownloadFilename(getDefaultProjectFilename(), PROJECT_FILE_EXTENSION);
 
-    downloadTextFile(projectText, getDefaultProjectFilename(), PROJECT_FILE_MIME);
+    if (filename === null) return;
+
+    downloadTextFile(projectText, filename, PROJECT_FILE_MIME);
 }
 
 function readTextFile(file, onSuccess) {
@@ -4477,6 +4512,14 @@ function updatePlaybackUI() {
     if (noiseToggleButton) noiseToggleButton.disabled = isPlaying;
     if (variantNoiseToggleButton) variantNoiseToggleButton.disabled = isPlaying;
     if (clearCanvasButton) clearCanvasButton.disabled = isPlaying || !frames.length;
+    if (pngExportFilenameInput) pngExportFilenameInput.disabled = isPlaying;
+    if (pngExportApplyButton) pngExportApplyButton.disabled = isPlaying;
+    if (pngExportCloseButton) pngExportCloseButton.disabled = isPlaying;
+
+    const pngScaleInputs = getPngExportScaleInputs();
+    for (const input of pngScaleInputs) {
+        input.disabled = isPlaying;
+    }
 
     const outlineRadio = document.getElementById("rectModeOutline");
     const fillRadio = document.getElementById("rectModeFill");
@@ -7319,8 +7362,15 @@ function drawBrushPreview(targetCtx = ctx) {
         targetCtx.strokeStyle = currentTool === "eyedropper" ? "#ffff00" : "#00ff88";
         targetCtx.lineWidth = customBrushPixelPerfectMode ? 1 : 2;
 
-        if (customBrushPixelPerfectMode && targetCtx === ctx) {
-            drawPixelPerfectCustomBrushOutline(hoverPixel.x, hoverPixel.y);
+        if (customBrushPixelPerfectMode) {
+            const pixels = getCustomBrushPixelsAt(hoverPixel.x, hoverPixel.y);
+
+            for (const pixel of pixels) {
+                const x = Math.round(pixel.x * CELL_SIZE);
+                const y = Math.round(pixel.y * CELL_SIZE);
+                const size = Math.max(1, Math.round(CELL_SIZE));
+                targetCtx.strokeRect(x, y, size, size);
+            }
         } else if (shouldUseCheapCustomBrushPreview()) {
             targetCtx.strokeRect(startX, startY, drawWidth, drawHeight);
         } else {
@@ -7340,8 +7390,15 @@ function drawBrushPreview(targetCtx = ctx) {
 
             targetCtx.strokeStyle = "#ffaa00";
 
-            if (customBrushPixelPerfectMode && targetCtx === ctx) {
-                drawPixelPerfectCustomBrushOutline(mirrorX, hoverPixel.y);
+            if (customBrushPixelPerfectMode) {
+                const mirrorPixels = getCustomBrushPixelsAt(mirrorX, hoverPixel.y);
+
+                for (const pixel of mirrorPixels) {
+                    const x = Math.round(pixel.x * CELL_SIZE);
+                    const y = Math.round(pixel.y * CELL_SIZE);
+                    const size = Math.max(1, Math.round(CELL_SIZE));
+                    targetCtx.strokeRect(x, y, size, size);
+                }
             } else if (shouldUseCheapCustomBrushPreview()) {
                 targetCtx.strokeRect(mirrorStartX, startY, drawWidth, drawHeight);
             } else {
@@ -7909,17 +7966,76 @@ function getSuggestedExportScale() {
     return 1;
 }
 
-function promptExportScale(label = "Export scale", defaultScale = null) {
-    const suggested = defaultScale || getSuggestedExportScale();
-    const response = prompt(`${label} (1-${MAX_EXPORT_SCALE}x):`, String(suggested));
-    if (response === null) return null;
+function getDefaultPngExportFilename(scale = null) {
+    const suffix = Number.isFinite(scale) ? `@${scale}x` : "";
+    return `pixel-hammer-frame-${currentFrameIndex + 1}-${GRID_SIZE}x${GRID_SIZE}${suffix}.png`;
+}
 
-    const parsed = parseInt(response, 10);
-    if (!Number.isFinite(parsed) || parsed < 1) {
-        return 1;
+function getPngExportScaleInputs() {
+    return [
+        pngScale1Input,
+        pngScale2Input,
+        pngScale4Input,
+        pngScale8Input,
+        pngScale16Input,
+        pngScale32Input
+    ].filter(Boolean);
+}
+
+function setSuggestedPngExportScales() {
+    const suggested = getSuggestedExportScale();
+    const scaleInputs = getPngExportScaleInputs();
+
+    for (const input of scaleInputs) {
+        input.checked = parseInt(input.value, 10) === suggested;
+    }
+}
+
+function getSelectedPngExportScales() {
+    return getPngExportScaleInputs()
+        .filter((input) => input.checked)
+        .map((input) => clamp(parseInt(input.value, 10) || 1, 1, MAX_EXPORT_SCALE))
+        .sort((a, b) => a - b);
+}
+
+function normalizePngExportFilename(filename, scale, multipleScales) {
+    const trimmed = (filename || "").trim();
+    const fallbackBaseName = getDefaultPngExportFilename().replace(/\.png$/i, "");
+    let safeName = trimmed || fallbackBaseName;
+
+    if (safeName.toLowerCase().endsWith(".png")) {
+        safeName = safeName.slice(0, -4);
     }
 
-    return clamp(parsed, 1, MAX_EXPORT_SCALE);
+    if (multipleScales) {
+        safeName = `${safeName}@${scale}x`;
+    }
+
+    return `${safeName}.png`;
+}
+
+function openPngExportPanel() {
+    if (!pngExportPanel) {
+        exportPNG();
+        return;
+    }
+
+    openFoldoutForElement(exportButton);
+
+    pngExportPanel.style.display = "block";
+
+    if (pngExportFilenameInput) {
+        pngExportFilenameInput.value = getDefaultPngExportFilename();
+        pngExportFilenameInput.focus();
+        pngExportFilenameInput.select();
+    }
+
+    setSuggestedPngExportScales();
+}
+
+function closePngExportPanel() {
+    if (!pngExportPanel) return;
+    pngExportPanel.style.display = "none";
 }
 
 function triggerCanvasDownload(exportCanvas, filename) {
@@ -7932,16 +8048,22 @@ function triggerCanvasDownload(exportCanvas, filename) {
 function exportPNG() {
     openFoldoutForElement(exportButton);
 
-    const scale = promptExportScale("PNG export scale");
-    if (scale === null) return;
+    const scales = getSelectedPngExportScales();
+    if (!scales.length) {
+        alert("Select at least one PNG export scale.");
+        return;
+    }
 
     const baseCanvas = buildFrameExportCanvas(getCurrentFrame());
-    const exportCanvas = buildScaledExportCanvas(baseCanvas, scale);
+    const baseFilename = pngExportFilenameInput ? pngExportFilenameInput.value : getDefaultPngExportFilename();
+    const multipleScales = scales.length > 1;
 
-    triggerCanvasDownload(
-        exportCanvas,
-        `pixel-hammer-frame-${currentFrameIndex + 1}-${GRID_SIZE}x${GRID_SIZE}@${scale}x.png`
-    );
+    for (const scale of scales) {
+        const exportCanvas = buildScaledExportCanvas(baseCanvas, scale);
+        const filename = normalizePngExportFilename(baseFilename, scale, multipleScales);
+
+        triggerCanvasDownload(exportCanvas, filename);
+    }
 }
 
 function renderFrameToSheetContext(sheetCtx, frame, offsetX, offsetY) {
@@ -8516,7 +8638,10 @@ function captureSelection() {
     }
 
     if (customBrushArmed) {
+        const previousPixelPerfectMode = customBrushPixelPerfectMode;
+        customBrushPixelPerfectMode = false;
         const nextBrush = buildCustomBrushFromSelectionPixels();
+        customBrushPixelPerfectMode = previousPixelPerfectMode;
         const previousBrushJson = JSON.stringify(serializeCustomStampBrush());
         const nextBrushJson = JSON.stringify(nextBrush);
 
@@ -8642,17 +8767,17 @@ function updateBrushUI() {
     }
 
     if (unloadCustomBrushButton) {
-        unloadCustomBrushButton.disabled = isPlaying;
+        unloadCustomBrushButton.disabled = isPlaying || !hasCustomBrush;
     }
 
     if (pixelPerfectCustomBrushButton) {
-        pixelPerfectCustomBrushButton.disabled = isPlaying || !hasCustomBrush;
+        pixelPerfectCustomBrushButton.disabled = isPlaying;
         pixelPerfectCustomBrushButton.classList.toggle("activeTool", customBrushPixelPerfectMode);
         pixelPerfectCustomBrushButton.textContent = customBrushPixelPerfectMode ? "Pixel Perfect: ON" : "Pixel Perfect: OFF";
     }
 
     if (customBrushUtilityPanelBlock) {
-        customBrushUtilityPanelBlock.style.display = hasCustomBrush ? "grid" : "none";
+        customBrushUtilityPanelBlock.style.display = "grid";
     }
 
     if (rectModeSelect) {
@@ -8833,7 +8958,15 @@ if (importSpritesheetInput) {
 }
 
 if (exportButton) {
-    exportButton.onclick = () => exportPNG();
+    exportButton.onclick = () => openPngExportPanel();
+}
+
+if (pngExportApplyButton) {
+    pngExportApplyButton.onclick = () => exportPNG();
+}
+
+if (pngExportCloseButton) {
+    pngExportCloseButton.onclick = () => closePngExportPanel();
 }
 
 if (exportSpritesheetButton) {

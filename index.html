@@ -119,6 +119,46 @@
                     <button id="exportSpritesheetWrapped">Wrap Sheet</button>
                 </div>
 
+                <div id="pngExportPanel" class="pngExportPanel" style="display: none;">
+                    <label for="pngExportFilename" class="miniLabel">PNG File Name</label>
+                    <input id="pngExportFilename" type="text" value="pixel-hammer-frame-1-32x32.png" spellcheck="false">
+
+                    <label class="miniLabel">PNG Scale Sizes</label>
+                    <div class="pngScaleGrid">
+                        <label class="pngScaleOption">
+                            <input id="pngScale1" type="checkbox" value="1">
+                            <span>1x</span>
+                        </label>
+                        <label class="pngScaleOption">
+                            <input id="pngScale2" type="checkbox" value="2">
+                            <span>2x</span>
+                        </label>
+                        <label class="pngScaleOption">
+                            <input id="pngScale4" type="checkbox" value="4">
+                            <span>4x</span>
+                        </label>
+                        <label class="pngScaleOption">
+                            <input id="pngScale8" type="checkbox" value="8">
+                            <span>8x</span>
+                        </label>
+                        <label class="pngScaleOption">
+                            <input id="pngScale16" type="checkbox" value="16">
+                            <span>16x</span>
+                        </label>
+                        <label class="pngScaleOption">
+                            <input id="pngScale32" type="checkbox" value="32">
+                            <span>32x</span>
+                        </label>
+                    </div>
+
+                    <div class="pngExportHint">Pick one or more sizes. If you export more than one, each file gets its scale added automatically.</div>
+
+                    <div class="compactGrid compactTop">
+                        <button id="pngExportApply" class="compactButton">Save PNG</button>
+                        <button id="pngExportClose" class="compactButton">Close</button>
+                    </div>
+                </div>
+
                 <div class="foldoutDivider"></div>
 
                 <label for="canvasSize" class="miniLabel">Canvas Size</label>
