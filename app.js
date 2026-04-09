@@ -21,6 +21,10 @@ const selectButton = document.getElementById("selectTool");
 const eyedropperButton = document.getElementById("eyedropperTool");
 
 let clearCanvasButton = null;
+let outlineRegionButton = null;
+let outlineRegionModeWrap = null;
+let outlineRegionBlackRadio = null;
+let outlineRegionSelectedRadio = null;
 
 let rectButton = document.getElementById("rectTool");
 let ellipseButton = document.getElementById("ellipseTool");
@@ -55,6 +59,16 @@ const pngScale4Input = document.getElementById("pngScale4");
 const pngScale8Input = document.getElementById("pngScale8");
 const pngScale16Input = document.getElementById("pngScale16");
 const pngScale32Input = document.getElementById("pngScale32");
+
+let pngExportNamePresetPanel = null;
+let pngExportNameSpriteButton = null;
+let pngExportNameTilesButton = null;
+let pngExportNameStageButton = null;
+let pngExportNameFrameButton = null;
+
+let exportPanelMode = "png";
+let sheetColumnsPanel = null;
+let sheetColumnsInput = null;
 
 const canvasSizeSelector = document.getElementById("canvasSize");
 const colorPicker = document.getElementById("colorPicker");
@@ -109,6 +123,7 @@ const framesWorkspace = document.getElementById("framesWorkspace");
 const tilesetWorkspace = document.getElementById("tilesetWorkspace");
 const frameReorderToggleButton = document.getElementById("frameReorderToggle");
 
+const workspaceAddFrameButton = document.getElementById("workspaceAddFrameButton");
 const toggleWorkspacePanelButton = document.getElementById("toggleWorkspacePanel");
 const animationWorkspaceContent = document.getElementById("animationWorkspaceContent");
 const previewPanel = document.getElementById("previewPanel");
@@ -146,6 +161,7 @@ let duplicateLayerMiniButton = null;
 
 let saveProjectButton = null;
 let loadProjectButton = null;
+let newProjectButton = null;
 let loadProjectInput = null;
 
 let shapeToolPanelBlock = null;
@@ -155,6 +171,12 @@ let noiseStrengthSlider = null;
 let noiseStrengthValue = null;
 let noiseDensitySlider = null;
 let noiseDensityValue = null;
+
+let colorThemePanelBlock = null;
+let colorThemeNeonButton = null;
+let colorThemePastelsButton = null;
+let colorThemeRetroButton = null;
+let colorThemeResetButton = null;
 
 let variantNoisePanelBlock = null;
 let variantNoiseToggleButton = null;
@@ -214,7 +236,7 @@ const MIN_NOISE_DENSITY = 0;
 const MAX_NOISE_DENSITY = 100;
 const NOISE_LIGHTNESS_START_THRESHOLD = 0.75;
 
-const COLOR_FAMILIES = [
+const DEFAULT_COLOR_FAMILIES = [
     { name: "Red", color: "#d83a3a" },
     { name: "Orange", color: "#e67e22" },
     { name: "Yellow", color: "#d4c32a" },
@@ -223,6 +245,39 @@ const COLOR_FAMILIES = [
     { name: "Blue", color: "#3b82f6" },
     { name: "Purple", color: "#8b5cf6" },
     { name: "Gray", color: "#8a8a8a" }
+];
+
+const NEON_COLOR_FAMILIES = [
+    { name: "Neon Pink", color: "#ff4fd8" },
+    { name: "Neon Orange", color: "#ff7a00" },
+    { name: "Neon Yellow", color: "#f5ff3b" },
+    { name: "Neon Green", color: "#39ff14" },
+    { name: "Neon Cyan", color: "#00f5ff" },
+    { name: "Neon Blue", color: "#2f7cff" },
+    { name: "Neon Purple", color: "#b84dff" },
+    { name: "Neon White", color: "#f4f4f4" }
+];
+
+const PASTEL_COLOR_FAMILIES = [
+    { name: "Pastel Pink", color: "#f4a7b9" },
+    { name: "Pastel Peach", color: "#f6c49b" },
+    { name: "Pastel Yellow", color: "#f2e7a1" },
+    { name: "Pastel Green", color: "#a8d8b9" },
+    { name: "Pastel Mint", color: "#9fe0d0" },
+    { name: "Pastel Blue", color: "#9fc4f5" },
+    { name: "Pastel Lavender", color: "#c7b6f7" },
+    { name: "Pastel Gray", color: "#c4c1cc" }
+];
+
+const RETRO_COLOR_FAMILIES = [
+    { name: "Retro Red", color: "#be4a2f" },
+    { name: "Retro Orange", color: "#d77643" },
+    { name: "Retro Sand", color: "#ead4aa" },
+    { name: "Retro Olive", color: "#6b8f3e" },
+    { name: "Retro Teal", color: "#4b726e" },
+    { name: "Retro Blue", color: "#5a6988" },
+    { name: "Retro Purple", color: "#7c5e99" },
+    { name: "Retro Slate", color: "#3b3b46" }
 ];
 
 let GRID_SIZE = 32;
@@ -244,6 +299,9 @@ let noiseEnabled = false;
 let noiseStrength = 28;
 let noiseDensity = 72;
 let variantIncludeNoise = false;
+let activeColorTheme = "reset";
+let activeColorFamilies = DEFAULT_COLOR_FAMILIES.map((family) => ({ ...family }));
+let pngExportNamePreset = "frame";
 
 let currentWorkspaceMode = "frames";
 let framesUnlocked = false;
@@ -251,6 +309,8 @@ let workspacePanelExpanded = false;
 let colorPanelVisible = true;
 let multiLayerModeEnabled = false;
 let advancedLayerControlsExpanded = false;
+let outlineRegionArmed = false;
+let outlineRegionColorMode = "black";
 
 let drawing = false;
 let lastPixel = null;
@@ -543,19 +603,32 @@ function injectRuntimeUiStyles() {
 
         .pixelForgeNoisePanelTitle,
         .pixelForgeFlipPanelTitle,
-        .pixelForgeVariantNoisePanelTitle {
+        .pixelForgeColorThemePanelTitle {
             font-size: 11px;
             font-weight: bold;
             margin-bottom: 8px;
             opacity: 0.9;
         }
 
-        .pixelForgeNoiseToggleButton,
-        .pixelForgeVariantNoiseToggleButton {
+        .pixelForgeNoiseToggleButton {
             width: 100%;
             margin-bottom: 8px;
             min-height: 32px !important;
             font-size: 12px !important;
+        }
+
+        .pixelForgeColorThemeButtonGrid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .pixelForgeColorThemeButton {
+            min-width: 0;
+            min-height: 30px !important;
+            padding: 6px 4px !important;
+            font-size: 11px !important;
+            line-height: 1.05;
         }
 
         .pixelForgeNoiseControls {
@@ -594,16 +667,10 @@ function injectRuntimeUiStyles() {
             color: #1f1f1f !important;
         }
 
-        .pixelForgeVariantNoiseToggleButton.variantNoiseEnabledState {
-            background: #a855f7 !important;
-            border-color: #c084fc !important;
+        .pixelForgeColorThemeButton.activeTool {
+            background: #1f9d55 !important;
+            border-color: #2ecc71 !important;
             color: #ffffff !important;
-        }
-
-        .pixelForgeVariantNoiseHint {
-            font-size: 11px;
-            opacity: 0.75;
-            line-height: 1.3;
         }
 
         .pixelForgeFlipButtonRow {
@@ -644,6 +711,35 @@ function injectRuntimeUiStyles() {
             line-height: 1.1;
         }
 
+        .pixelForgeOutlineModeRow {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .pixelForgeOutlineModeOption {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            min-width: 0;
+            min-height: 18px;
+            padding: 4px 6px;
+            font-size: 11px;
+            line-height: 1.1;
+            cursor: pointer;
+            user-select: none;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.03);
+            box-sizing: border-box;
+        }
+
+        .pixelForgeOutlineModeOption input {
+            margin: 0;
+        }
+
         .layerRow.pixelForgeOpaqueLayerRow {
             background: rgba(50, 170, 80, 0.18);
         }
@@ -673,6 +769,21 @@ function injectRuntimeUiStyles() {
             padding: 5px 8px !important;
             font-size: 11px !important;
             line-height: 1.1;
+        }
+
+        .pixelForgeExportNamePresetRow {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .pixelForgeExportNamePresetButton {
+            min-width: 0;
+            min-height: 30px !important;
+            padding: 6px 4px !important;
+            font-size: 11px !important;
+            line-height: 1.05;
         }
     `;
     document.head.appendChild(style);
@@ -934,13 +1045,61 @@ function ensureNoiseControlsExist() {
     }
 }
 
-function ensureVariantNoiseControlsExist() {
+function cloneColorFamilies(families) {
+    return families.map((family) => ({
+        name: family.name,
+        color: family.color
+    }));
+}
+
+function getColorThemeFamilies(theme) {
+    if (theme === "neon") {
+        return cloneColorFamilies(NEON_COLOR_FAMILIES);
+    }
+
+    if (theme === "pastels") {
+        return cloneColorFamilies(PASTEL_COLOR_FAMILIES);
+    }
+
+    if (theme === "retro") {
+        return cloneColorFamilies(RETRO_COLOR_FAMILIES);
+    }
+
+    return cloneColorFamilies(DEFAULT_COLOR_FAMILIES);
+}
+
+function applyColorTheme(theme, options = {}) {
+    activeColorTheme =
+        theme === "neon" ||
+        theme === "pastels" ||
+        theme === "retro"
+            ? theme
+            : "reset";
+
+    activeColorFamilies = getColorThemeFamilies(activeColorTheme);
+
+    const bridge = getPaletteBridge();
+    if (bridge.constants) {
+        bridge.constants.COLOR_FAMILIES = activeColorFamilies;
+    }
+
+    if (!options.skipRefresh) {
+        refreshPaletteUI();
+    }
+
+    updateColorThemeUI();
+}
+
+function ensureColorThemeControlsExist() {
     if (!previewPanel) return;
 
-    variantNoisePanelBlock = document.getElementById("pixelForgeVariantNoisePanel");
-    variantNoiseToggleButton = document.getElementById("pixelForgeVariantNoiseToggle");
+    colorThemePanelBlock = document.getElementById("pixelForgeColorThemePanel");
+    colorThemeNeonButton = document.getElementById("pixelForgeColorThemeNeon");
+    colorThemePastelsButton = document.getElementById("pixelForgeColorThemePastels");
+    colorThemeRetroButton = document.getElementById("pixelForgeColorThemeRetro");
+    colorThemeResetButton = document.getElementById("pixelForgeColorThemeReset");
 
-    if (!variantNoisePanelBlock) {
+    if (!colorThemePanelBlock) {
         const targetPanel =
             (generateVariantButton && generateVariantButton.closest(".panelBlock")) ||
             (variantModeSelect && variantModeSelect.closest(".panelBlock")) ||
@@ -948,46 +1107,99 @@ function ensureVariantNoiseControlsExist() {
 
         if (!targetPanel || !targetPanel.parentNode) return;
 
-        variantNoisePanelBlock = document.createElement("div");
-        variantNoisePanelBlock.id = "pixelForgeVariantNoisePanel";
-        variantNoisePanelBlock.className = "panelBlock";
-        variantNoisePanelBlock.innerHTML = `
-            <div class="pixelForgeVariantNoisePanelTitle">Variant Noise</div>
-            <button id="pixelForgeVariantNoiseToggle" class="pixelForgeVariantNoiseToggleButton" type="button">Noise Colors: OFF</button>
-            <div class="pixelForgeVariantNoiseHint">OFF keeps noisy shade micro-colors grouped out of recolors. Turn ON for full static-style remaps.</div>
+        colorThemePanelBlock = document.createElement("div");
+        colorThemePanelBlock.id = "pixelForgeColorThemePanel";
+        colorThemePanelBlock.className = "panelBlock";
+        colorThemePanelBlock.innerHTML = `
+            <div class="pixelForgeColorThemePanelTitle">Color Themes</div>
+            <div class="pixelForgeColorThemeButtonGrid">
+                <button id="pixelForgeColorThemeNeon" class="pixelForgeColorThemeButton" type="button">Neon</button>
+                <button id="pixelForgeColorThemePastels" class="pixelForgeColorThemeButton" type="button">Pastels</button>
+                <button id="pixelForgeColorThemeRetro" class="pixelForgeColorThemeButton" type="button">Retro</button>
+                <button id="pixelForgeColorThemeReset" class="pixelForgeColorThemeButton" type="button">Reset</button>
+            </div>
         `;
 
-        if (targetPanel.nextSibling) {
-            targetPanel.parentNode.insertBefore(variantNoisePanelBlock, targetPanel.nextSibling);
+        if (targetPanel.parentNode.firstChild === targetPanel) {
+            targetPanel.parentNode.insertBefore(colorThemePanelBlock, targetPanel);
         } else {
-            targetPanel.parentNode.appendChild(variantNoisePanelBlock);
+            targetPanel.parentNode.insertBefore(colorThemePanelBlock, targetPanel);
         }
     }
 
-    variantNoisePanelBlock = document.getElementById("pixelForgeVariantNoisePanel");
-    variantNoiseToggleButton = document.getElementById("pixelForgeVariantNoiseToggle");
+    colorThemePanelBlock = document.getElementById("pixelForgeColorThemePanel");
+    colorThemeNeonButton = document.getElementById("pixelForgeColorThemeNeon");
+    colorThemePastelsButton = document.getElementById("pixelForgeColorThemePastels");
+    colorThemeRetroButton = document.getElementById("pixelForgeColorThemeRetro");
+    colorThemeResetButton = document.getElementById("pixelForgeColorThemeReset");
 
-    if (variantNoiseToggleButton && !variantNoiseToggleButton.dataset.boundVariantNoiseToggle) {
-        variantNoiseToggleButton.onclick = () => {
+    if (colorThemeNeonButton && !colorThemeNeonButton.dataset.boundColorTheme) {
+        colorThemeNeonButton.onclick = () => {
             if (isPlaying) return;
-            variantIncludeNoise = !variantIncludeNoise;
-            openFoldoutForElement(variantNoiseToggleButton);
-            updateVariantNoiseUI();
-            updateVariantUI();
+            openFoldoutForElement(colorThemeNeonButton);
+            applyColorTheme("neon");
         };
-        variantNoiseToggleButton.dataset.boundVariantNoiseToggle = "true";
+        colorThemeNeonButton.dataset.boundColorTheme = "true";
+    }
+
+    if (colorThemePastelsButton && !colorThemePastelsButton.dataset.boundColorTheme) {
+        colorThemePastelsButton.onclick = () => {
+            if (isPlaying) return;
+            openFoldoutForElement(colorThemePastelsButton);
+            applyColorTheme("pastels");
+        };
+        colorThemePastelsButton.dataset.boundColorTheme = "true";
+    }
+
+    if (colorThemeRetroButton && !colorThemeRetroButton.dataset.boundColorTheme) {
+        colorThemeRetroButton.onclick = () => {
+            if (isPlaying) return;
+            openFoldoutForElement(colorThemeRetroButton);
+            applyColorTheme("retro");
+        };
+        colorThemeRetroButton.dataset.boundColorTheme = "true";
+    }
+
+    if (colorThemeResetButton && !colorThemeResetButton.dataset.boundColorTheme) {
+        colorThemeResetButton.onclick = () => {
+            if (isPlaying) return;
+            openFoldoutForElement(colorThemeResetButton);
+            applyColorTheme("reset");
+        };
+        colorThemeResetButton.dataset.boundColorTheme = "true";
     }
 }
 
-function updateVariantNoiseUI() {
-    ensureVariantNoiseControlsExist();
+function updateColorThemeUI() {
+    ensureColorThemeControlsExist();
 
-    if (variantNoiseToggleButton) {
-        variantNoiseToggleButton.textContent = variantIncludeNoise ? "Noise Colors: ON" : "Noise Colors: OFF";
-        variantNoiseToggleButton.classList.toggle("activeTool", variantIncludeNoise);
-        variantNoiseToggleButton.classList.toggle("variantNoiseEnabledState", variantIncludeNoise);
-        variantNoiseToggleButton.disabled = isPlaying;
+    if (colorThemeNeonButton) {
+        colorThemeNeonButton.classList.toggle("activeTool", activeColorTheme === "neon");
+        colorThemeNeonButton.disabled = isPlaying;
     }
+
+    if (colorThemePastelsButton) {
+        colorThemePastelsButton.classList.toggle("activeTool", activeColorTheme === "pastels");
+        colorThemePastelsButton.disabled = isPlaying;
+    }
+
+    if (colorThemeRetroButton) {
+        colorThemeRetroButton.classList.toggle("activeTool", activeColorTheme === "retro");
+        colorThemeRetroButton.disabled = isPlaying;
+    }
+
+    if (colorThemeResetButton) {
+        colorThemeResetButton.classList.toggle("activeTool", activeColorTheme === "reset");
+        colorThemeResetButton.disabled = isPlaying;
+    }
+}
+
+function ensureVariantNoiseControlsExist() {
+    ensureColorThemeControlsExist();
+}
+
+function updateVariantNoiseUI() {
+    updateColorThemeUI();
 }
 
 function updateNoiseUI() {
@@ -1097,6 +1309,10 @@ function ensureClearCanvasControlExists() {
     if (!toolsPanel) return;
 
     clearCanvasButton = document.getElementById("pixelForgeClearCanvasButton");
+    outlineRegionButton = document.getElementById("pixelForgeOutlineRegionButton");
+    outlineRegionModeWrap = document.getElementById("pixelForgeOutlineModeRow");
+    outlineRegionBlackRadio = document.getElementById("pixelForgeOutlineModeBlack");
+    outlineRegionSelectedRadio = document.getElementById("pixelForgeOutlineModeSelected");
 
     const firstToolGrid = toolsPanel.querySelector(".buttonGrid");
     if (!firstToolGrid) return;
@@ -1115,12 +1331,92 @@ function ensureClearCanvasControlExists() {
         }
     }
 
+    if (!outlineRegionButton) {
+        outlineRegionButton = document.createElement("button");
+        outlineRegionButton.id = "pixelForgeOutlineRegionButton";
+        outlineRegionButton.type = "button";
+        outlineRegionButton.className = "pixelForgeClearCanvasButton";
+        outlineRegionButton.textContent = "Outline Region";
+
+        if (clearCanvasButton && clearCanvasButton.nextSibling) {
+            clearCanvasButton.parentNode.insertBefore(outlineRegionButton, clearCanvasButton.nextSibling);
+        } else if (clearCanvasButton && clearCanvasButton.parentNode) {
+            clearCanvasButton.parentNode.appendChild(outlineRegionButton);
+        } else if (firstToolGrid.nextSibling) {
+            firstToolGrid.parentNode.insertBefore(outlineRegionButton, firstToolGrid.nextSibling);
+        } else {
+            firstToolGrid.parentNode.appendChild(outlineRegionButton);
+        }
+    }
+
+    if (!outlineRegionModeWrap) {
+        outlineRegionModeWrap = document.createElement("div");
+        outlineRegionModeWrap.id = "pixelForgeOutlineModeRow";
+        outlineRegionModeWrap.className = "pixelForgeOutlineModeRow";
+        outlineRegionModeWrap.innerHTML = `
+            <label class="pixelForgeOutlineModeOption" for="pixelForgeOutlineModeBlack">
+                <input id="pixelForgeOutlineModeBlack" type="radio" name="pixelForgeOutlineMode" value="black">
+                <span>Black</span>
+            </label>
+            <label class="pixelForgeOutlineModeOption" for="pixelForgeOutlineModeSelected">
+                <input id="pixelForgeOutlineModeSelected" type="radio" name="pixelForgeOutlineMode" value="selected">
+                <span>Selected</span>
+            </label>
+        `;
+
+        if (outlineRegionButton && outlineRegionButton.nextSibling) {
+            outlineRegionButton.parentNode.insertBefore(outlineRegionModeWrap, outlineRegionButton.nextSibling);
+        } else if (outlineRegionButton && outlineRegionButton.parentNode) {
+            outlineRegionButton.parentNode.appendChild(outlineRegionModeWrap);
+        } else {
+            firstToolGrid.parentNode.appendChild(outlineRegionModeWrap);
+        }
+    }
+
+    outlineRegionModeWrap = document.getElementById("pixelForgeOutlineModeRow");
+    outlineRegionBlackRadio = document.getElementById("pixelForgeOutlineModeBlack");
+    outlineRegionSelectedRadio = document.getElementById("pixelForgeOutlineModeSelected");
+
     if (!clearCanvasButton.dataset.boundClearCanvas) {
         clearCanvasButton.onclick = () => clearCurrentFrameCanvas();
         clearCanvasButton.dataset.boundClearCanvas = "true";
     }
 
+    if (outlineRegionButton && !outlineRegionButton.dataset.boundOutlineRegion) {
+        outlineRegionButton.onclick = () => {
+            if (isPlaying || !frames.length) return;
+            outlineRegionArmed = !outlineRegionArmed;
+            openFoldoutForElement(outlineRegionButton);
+            updateOutlineRegionButtonUI();
+            refreshWorkspacePreview();
+        };
+        outlineRegionButton.dataset.boundOutlineRegion = "true";
+    }
+
+    if (outlineRegionBlackRadio && !outlineRegionBlackRadio.dataset.boundOutlineMode) {
+        outlineRegionBlackRadio.onchange = () => {
+            if (!outlineRegionBlackRadio.checked) return;
+            outlineRegionColorMode = "black";
+            openFoldoutForElement(outlineRegionBlackRadio);
+            updateOutlineRegionButtonUI();
+            refreshWorkspacePreview();
+        };
+        outlineRegionBlackRadio.dataset.boundOutlineMode = "true";
+    }
+
+    if (outlineRegionSelectedRadio && !outlineRegionSelectedRadio.dataset.boundOutlineMode) {
+        outlineRegionSelectedRadio.onchange = () => {
+            if (!outlineRegionSelectedRadio.checked) return;
+            outlineRegionColorMode = "selected";
+            openFoldoutForElement(outlineRegionSelectedRadio);
+            updateOutlineRegionButtonUI();
+            refreshWorkspacePreview();
+        };
+        outlineRegionSelectedRadio.dataset.boundOutlineMode = "true";
+    }
+
     clearCanvasButton.disabled = isPlaying || !frames.length;
+    updateOutlineRegionButtonUI();
 }
 
 function ensureToolButtonsCompact() {
@@ -1180,9 +1476,10 @@ function ensureProjectControlsExist() {
 
     saveProjectButton = document.getElementById("saveProject");
     loadProjectButton = document.getElementById("loadProject");
+    newProjectButton = document.getElementById("newProject");
     loadProjectInput = document.getElementById("loadProjectInput");
 
-    if (!saveProjectButton || !loadProjectButton || !loadProjectInput) {
+    if (!saveProjectButton || !loadProjectButton || !newProjectButton || !loadProjectInput) {
         const projectPanel = document.createElement("div");
         projectPanel.id = "pixelForgeProjectPanel";
         projectPanel.className = "panelBlock";
@@ -1195,6 +1492,10 @@ function ensureProjectControlsExist() {
                 </button>
                 <button id="loadProject" class="pixelForgeHotkeyButton">
                     <span class="pixelForgeButtonMainLabel">Load</span>
+                    <span class="pixelForgeButtonHotkeyLabel">Project</span>
+                </button>
+                <button id="newProject" class="pixelForgeHotkeyButton wideButton">
+                    <span class="pixelForgeButtonMainLabel">New</span>
                     <span class="pixelForgeButtonHotkeyLabel">Project</span>
                 </button>
             </div>
@@ -1210,6 +1511,7 @@ function ensureProjectControlsExist() {
 
         saveProjectButton = document.getElementById("saveProject");
         loadProjectButton = document.getElementById("loadProject");
+        newProjectButton = document.getElementById("newProject");
         loadProjectInput = document.getElementById("loadProjectInput");
     }
 
@@ -1226,6 +1528,11 @@ function ensureProjectControlsExist() {
             loadProjectInput.click();
         };
         loadProjectButton.dataset.boundLoadProject = "true";
+    }
+
+    if (newProjectButton && !newProjectButton.dataset.boundNewProject) {
+        newProjectButton.onclick = () => newProject();
+        newProjectButton.dataset.boundNewProject = "true";
     }
 
     if (loadProjectInput && !loadProjectInput.dataset.boundLoadProjectInput) {
@@ -2822,6 +3129,7 @@ function createProjectData() {
             noiseStrength,
             noiseDensity,
             variantIncludeNoise,
+            activeColorTheme,
             brushType,
             lastStandardBrushType
         }
@@ -2874,6 +3182,110 @@ function exportProjectFile() {
     if (filename === null) return;
 
     downloadTextFile(projectText, filename, PROJECT_FILE_MIME);
+}
+
+function newProject() {
+    if (isPlaying) return;
+
+    const confirmed = window.confirm("Start a new project? Unsaved work will be lost.");
+    if (!confirmed) return;
+
+    stopPlayback(false);
+
+    GRID_SIZE = sanitizeProjectGridSize(canvasSizeSelector ? canvasSizeSelector.value : GRID_SIZE);
+    CELL_SIZE = getRenderDisplaySize() / GRID_SIZE;
+
+    createPixelGrid();
+    currentFrameIndex = 0;
+    currentLayerIndex = 0;
+    timelineStartIndex = 0;
+    frameMoveSelectionIndex = 0;
+
+    framesUnlocked = false;
+    workspacePanelExpanded = false;
+    colorPanelVisible = true;
+    multiLayerModeEnabled = false;
+    advancedLayerControlsExpanded = false;
+    onionSkinEnabled = true;
+    currentWorkspaceMode = "frames";
+    playbackMode = "loop";
+    rectMode = "outline";
+
+    noiseEnabled = false;
+    noiseStrength = 28;
+    noiseDensity = 72;
+    variantIncludeNoise = false;
+
+    applyColorTheme("reset", { skipRefresh: true });
+
+    setCustomStampBrush(null);
+    customBrushArmed = false;
+    customBrushHintShown = false;
+    customBrushPixelPerfectMode = false;
+    brushType = "pixel";
+    lastStandardBrushType = "pixel";
+
+    playbackDirection = 1;
+    playbackTimelineFrozenIndex = 0;
+
+    undoStack = [];
+    redoStack = [];
+    hoverPixel = null;
+    ditherOrigin = null;
+    layerOpacityInteractionSaved = false;
+    layerRangeCacheDirtyDeferred = false;
+
+    drawing = false;
+    selecting = false;
+    movingSelection = false;
+    selectionDetachedFromCanvas = false;
+    rectDrawing = false;
+    rectStart = null;
+    rectEnd = null;
+
+    resetPointerStrokeState();
+    clearSelection();
+    clearLinePath();
+    clearFrameDragState();
+    clearCurrentFrameRenderCache();
+
+    if (canvasSizeSelector) {
+        canvasSizeSelector.value = String(GRID_SIZE);
+    }
+
+    if (playbackModeSelect) {
+        playbackModeSelect.value = playbackMode;
+    }
+
+    if (rectModeSelect) {
+        rectModeSelect.value = rectMode;
+    }
+
+    openFoldoutForElement(newProjectButton || previewPanel);
+    applyCanvasZoom();
+    centerCanvasViewport();
+    updateZoomLabel();
+    updateBrushUI();
+    updateToolUI();
+    updateFrameReorderUI();
+    updateWorkspaceModeUI();
+    updateOnionSkinUI();
+    updateFrameUI();
+    updatePlaybackUI();
+    updateHistoryUI();
+    updateLayerUI();
+    updateNoiseUI();
+    updateVariantNoiseUI();
+
+    if (tileCtx && tileCanvas) {
+        tileCtx.clearRect(0, 0, tileCanvas.width, tileCanvas.height);
+    }
+
+    requestAnimationFrame(() => {
+        updateBrushUI();
+        updateToolUI();
+        forceImmediateCanvasRefresh();
+    });
 }
 
 function readTextFile(file, onSuccess) {
@@ -2979,6 +3391,12 @@ function normalizeProjectData(projectData) {
             noiseStrength: clamp(parseInt(workspace.noiseStrength, 10) || 28, MIN_NOISE_STRENGTH, MAX_NOISE_STRENGTH),
             noiseDensity: clamp(parseInt(workspace.noiseDensity, 10) || 72, MIN_NOISE_DENSITY, MAX_NOISE_DENSITY),
             variantIncludeNoise: !!workspace.variantIncludeNoise,
+            activeColorTheme:
+                workspace.activeColorTheme === "neon" ||
+                workspace.activeColorTheme === "pastels" ||
+                workspace.activeColorTheme === "retro"
+                    ? workspace.activeColorTheme
+                    : "reset",
             brushType: workspace.brushType === CUSTOM_BRUSH_TYPE ? CUSTOM_BRUSH_TYPE : (typeof workspace.brushType === "string" ? workspace.brushType : "pixel"),
             lastStandardBrushType: typeof workspace.lastStandardBrushType === "string" ? workspace.lastStandardBrushType : "pixel"
         }
@@ -3012,6 +3430,7 @@ function applyProjectData(projectState) {
     noiseStrength = projectState.workspace.noiseStrength;
     noiseDensity = projectState.workspace.noiseDensity;
     variantIncludeNoise = projectState.workspace.variantIncludeNoise;
+    applyColorTheme(projectState.workspace.activeColorTheme || "reset", { skipRefresh: true });
     setCustomStampBrush(projectState.customStampBrush);
     syncCustomBrushToCurrentCanvasSize();
     customBrushArmed = false;
@@ -3350,6 +3769,7 @@ function createHistoryState() {
         noiseStrength,
         noiseDensity,
         variantIncludeNoise,
+        activeColorTheme,
         brushType,
         lastStandardBrushType,
         customStampBrush: cloneCustomStampBrushData()
@@ -4087,6 +4507,7 @@ function applyHistoryState(state) {
     noiseStrength = clamp(parseInt(state.noiseStrength, 10) || 28, MIN_NOISE_STRENGTH, MAX_NOISE_STRENGTH);
     noiseDensity = clamp(parseInt(state.noiseDensity, 10) || 72, MIN_NOISE_DENSITY, MAX_NOISE_DENSITY);
     variantIncludeNoise = !!state.variantIncludeNoise;
+    applyColorTheme(state.activeColorTheme || "reset", { skipRefresh: true });
     setCustomStampBrush(state.customStampBrush);
     lastStandardBrushType = state.lastStandardBrushType || "pixel";
     brushType = state.brushType === CUSTOM_BRUSH_TYPE ? CUSTOM_BRUSH_TYPE : (state.brushType || "pixel");
@@ -4508,13 +4929,22 @@ function updatePlaybackUI() {
     if (layerOpacitySlider) layerOpacitySlider.disabled = isPlaying || !multiLayerModeEnabled;
     if (saveProjectButton) saveProjectButton.disabled = isPlaying;
     if (loadProjectButton) loadProjectButton.disabled = isPlaying;
+    if (newProjectButton) newProjectButton.disabled = isPlaying;
     if (rectModeSelect) rectModeSelect.disabled = isPlaying;
     if (noiseToggleButton) noiseToggleButton.disabled = isPlaying;
-    if (variantNoiseToggleButton) variantNoiseToggleButton.disabled = isPlaying;
+    if (colorThemeNeonButton) colorThemeNeonButton.disabled = isPlaying;
+    if (colorThemePastelsButton) colorThemePastelsButton.disabled = isPlaying;
+    if (colorThemeRetroButton) colorThemeRetroButton.disabled = isPlaying;
+    if (colorThemeResetButton) colorThemeResetButton.disabled = isPlaying;
     if (clearCanvasButton) clearCanvasButton.disabled = isPlaying || !frames.length;
+    if (outlineRegionButton) outlineRegionButton.disabled = isPlaying || !frames.length;
     if (pngExportFilenameInput) pngExportFilenameInput.disabled = isPlaying;
     if (pngExportApplyButton) pngExportApplyButton.disabled = isPlaying;
     if (pngExportCloseButton) pngExportCloseButton.disabled = isPlaying;
+    if (pngExportNameSpriteButton) pngExportNameSpriteButton.disabled = isPlaying;
+    if (pngExportNameTilesButton) pngExportNameTilesButton.disabled = isPlaying;
+    if (pngExportNameStageButton) pngExportNameStageButton.disabled = isPlaying;
+    if (pngExportNameFrameButton) pngExportNameFrameButton.disabled = isPlaying;
 
     const pngScaleInputs = getPngExportScaleInputs();
     for (const input of pngScaleInputs) {
@@ -4533,7 +4963,9 @@ function updatePlaybackUI() {
     updateVariantUI();
     updateAdvancedLayerUI();
     updateNoiseUI();
-    updateVariantNoiseUI();
+    updateColorThemeUI();
+    updatePngExportNamePresetUI();
+    updateOutlineRegionButtonUI();
     syncFoldoutUI();
 }
 
@@ -4606,6 +5038,7 @@ function updateWorkspaceModeUI() {
     }
 
     updateWorkspacePanelUI();
+    updateWorkspaceStarterButtonUI();
     updateAdvancedLayerUI();
     syncFoldoutUI();
 }
@@ -5008,7 +5441,19 @@ function updateFramesWorkspaceVisibility() {
     }
 
     updateUpdateFramesButtonUI();
+    updateWorkspaceStarterButtonUI();
     syncFoldoutUI();
+}
+
+function updateWorkspaceStarterButtonUI() {
+    if (!workspaceAddFrameButton) return;
+
+    const showStarterButton =
+        currentWorkspaceMode === "frames" &&
+        frames.length <= 1;
+
+    workspaceAddFrameButton.style.display = showStarterButton ? "block" : "none";
+    workspaceAddFrameButton.disabled = isPlaying;
 }
 
 function updateWorkspacePanelUI() {
@@ -5240,7 +5685,7 @@ function syncPaletteBridge() {
         RECENT_PALETTE_SIZE,
         PALETTE_STORAGE_KEY,
         PALETTE_SPLIT_COLUMNS,
-        COLOR_FAMILIES
+        COLOR_FAMILIES: activeColorFamilies
     };
 
     bridge.state = {
@@ -5524,7 +5969,7 @@ function updateVariantStatus(message = null) {
         return;
     }
 
-    variantStatus.textContent = `Current frame only · ${getVariantMode() === "wild" ? "Wild" : "Safe"} · Noise ${variantIncludeNoise ? "ON" : "OFF"}`;
+    variantStatus.textContent = `Recolors current frame only · ${getVariantMode() === "wild" ? "Wild" : "Safe"}`;
 }
 
 function updateVariantUI() {
@@ -5661,7 +6106,7 @@ function generateVariant(modeOverride = null) {
     const uniqueColors = collectUniqueFrameColors(getCurrentFrame());
 
     if (!uniqueColors.length) {
-        updateVariantStatus("No visible unlocked colors on current frame");
+        updateVariantStatus("Nothing to recolor on the current frame");
         return;
     }
 
@@ -5681,7 +6126,7 @@ function generateVariant(modeOverride = null) {
     lastVariantMode = mode;
     openFoldoutForElement(generateVariantButton || rerollVariantButton || variantModeSelect);
     updateVariantStatus(
-        `Variant applied · ${mode === "wild" ? "Wild" : "Safe"} · ${uniqueColors.length} groups · Noise ${variantIncludeNoise ? "ON" : "OFF"}`
+        `Sprite recolored · ${mode === "wild" ? "Wild" : "Safe"} · ${uniqueColors.length} color groups`
     );
 }
 
@@ -6237,7 +6682,7 @@ function updateFrameUI() {
     updateFrameDurationUI();
     updateVariantUI();
     updateNoiseUI();
-    updateVariantNoiseUI();
+    updateColorThemeUI();
     syncFoldoutUI();
 }
 
@@ -6259,7 +6704,7 @@ function loadFrame(index) {
     refreshWorkspacePreview();
 }
 
-function addFrame() {
+function addFrame(triggerElement = addFrameButton) {
     if (isPlaying) return;
 
     saveState();
@@ -6274,7 +6719,7 @@ function addFrame() {
     clearRectState();
     clearFrameDragState();
     workspacePanelExpanded = true;
-    openFoldoutForElement(addFrameButton);
+    openFoldoutForElement(triggerElement || addFrameButton);
     ensureTimelineShowsFrame(currentFrameIndex);
     updateFrameUI();
     updateHistoryUI();
@@ -6562,9 +7007,10 @@ function getNoiseStrengthCurve() {
     const ratio = clamp(noiseStrength / 100, 0, 1);
 
     return {
-        densityInfluence: Math.pow(ratio, 1.35),
-        lightnessRange: Math.max(1, Math.round(4 + ratio * 10)),
-        hueRange: Math.round(1 + ratio * 4)
+        densityInfluence: Math.pow(ratio, 1.2),
+        hueRange: ratio >= 0.92 ? 2 : ratio >= 0.6 ? 1 : 0,
+        maxLightStep: ratio >= 0.9 ? 4 : ratio >= 0.65 ? 3 : ratio >= 0.35 ? 2 : 1,
+        maxDarkStep: ratio >= 0.98 ? 6 : ratio >= 0.9 ? 5 : ratio >= 0.72 ? 4 : ratio >= 0.48 ? 3 : ratio >= 0.22 ? 2 : 1
     };
 }
 
@@ -6573,7 +7019,15 @@ function shadeColorForNoise(hex, shadeOffset, hueShift) {
     const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
     const nextHue = ((hsl.h + hueShift) % 360 + 360) % 360;
-    const nextSaturation = clamp(hsl.s + (shadeOffset * 4), 8, 100);
+
+    let saturationBias = 0;
+    if (shadeOffset < 0) {
+        saturationBias = Math.round(Math.abs(shadeOffset) * 0.45);
+    } else if (shadeOffset > 0) {
+        saturationBias = -Math.round(Math.abs(shadeOffset) * 0.18);
+    }
+
+    const nextSaturation = clamp(hsl.s + saturationBias, 12, 100);
     const nextLightness = clamp(hsl.l + shadeOffset, 3, 97);
 
     return hslToHex(nextHue, nextSaturation, nextLightness);
@@ -6581,12 +7035,64 @@ function shadeColorForNoise(hex, shadeOffset, hueShift) {
 
 function buildNoiseShadePalette(baseColor) {
     return {
-        lightest: shadeColorForNoise(baseColor, 12, 0),
-        light: shadeColorForNoise(baseColor, 6, 0),
+        light4: shadeColorForNoise(baseColor, 18, 0),
+        light3: shadeColorForNoise(baseColor, 13, 0),
+        light2: shadeColorForNoise(baseColor, 9, 0),
+        light1: shadeColorForNoise(baseColor, 5, 0),
         base: normalizeColor(baseColor),
-        dark2: shadeColorForNoise(baseColor, -7, 0),
-        dark1: shadeColorForNoise(baseColor, -14, 0)
+        dark1: shadeColorForNoise(baseColor, -4, 0),
+        dark2: shadeColorForNoise(baseColor, -8, 0),
+        dark3: shadeColorForNoise(baseColor, -12, 0),
+        dark4: shadeColorForNoise(baseColor, -16, 0),
+        dark5: shadeColorForNoise(baseColor, -21, 0),
+        dark6: shadeColorForNoise(baseColor, -27, 0)
     };
+}
+
+function getWeightedNoiseShadePool(palette, baseColor, curve) {
+    const rgb = hexToRgb(baseColor);
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+    let maxLightStep = curve.maxLightStep;
+    let maxDarkStep = curve.maxDarkStep;
+
+    if (hsl.l >= 82) {
+        maxDarkStep = Math.min(maxDarkStep, noiseStrength >= 98 ? 4 : 2);
+    } else if (hsl.l >= 70) {
+        maxDarkStep = Math.min(maxDarkStep, noiseStrength >= 95 ? 5 : 3);
+    } else if (hsl.l >= 58) {
+        maxDarkStep = Math.min(maxDarkStep, noiseStrength >= 92 ? 5 : 4);
+    }
+
+    if (hsl.l <= 18) {
+        maxLightStep = Math.min(maxLightStep, 1);
+    } else if (hsl.l <= 28) {
+        maxLightStep = Math.min(maxLightStep, 2);
+    } else if (hsl.l <= 38) {
+        maxLightStep = Math.min(maxLightStep, 3);
+    }
+
+    const weighted = [];
+
+    const pushShade = (color, weight) => {
+        for (let i = 0; i < weight; i++) {
+            weighted.push(color);
+        }
+    };
+
+    pushShade(palette.base, 8);
+    pushShade(palette.light1, maxLightStep >= 1 ? 5 : 0);
+    pushShade(palette.dark1, maxDarkStep >= 1 ? 6 : 0);
+    pushShade(palette.light2, maxLightStep >= 2 ? 4 : 0);
+    pushShade(palette.dark2, maxDarkStep >= 2 ? 5 : 0);
+    pushShade(palette.light3, maxLightStep >= 3 ? 3 : 0);
+    pushShade(palette.dark3, maxDarkStep >= 3 ? 4 : 0);
+    pushShade(palette.light4, maxLightStep >= 4 ? 2 : 0);
+    pushShade(palette.dark4, maxDarkStep >= 4 ? 3 : 0);
+    pushShade(palette.dark5, maxDarkStep >= 5 ? 2 : 0);
+    pushShade(palette.dark6, maxDarkStep >= 6 ? 1 : 0);
+
+    return weighted.length ? weighted : [palette.base];
 }
 
 function getNoisyColor(baseColor) {
@@ -6602,40 +7108,11 @@ function getNoisyColor(baseColor) {
     }
 
     const palette = buildNoiseShadePalette(baseColor);
-    const ratio = clamp(noiseStrength / 100, 0, 1);
+    const pool = getWeightedNoiseShadePool(palette, baseColor, curve);
+    const chosenColor = pool[Math.floor(Math.random() * pool.length)] || palette.base;
     const hueShift = randomBetween(-curve.hueRange, curve.hueRange);
 
-    if (noiseStrength >= 100) {
-        return Math.random() < 0.5
-            ? shadeColorForNoise(palette.dark1, 0, hueShift)
-            : shadeColorForNoise(palette.dark2, 0, hueShift);
-    }
-
-    if (noiseStrength >= 95) {
-        const roll = Math.random();
-        if (roll < 0.22) return shadeColorForNoise(palette.dark2, 0, hueShift);
-        if (roll < 0.58) return shadeColorForNoise(palette.base, 0, hueShift);
-        if (roll < 0.82) return shadeColorForNoise(palette.light, 0, hueShift);
-        return shadeColorForNoise(palette.lightest, 0, hueShift);
-    }
-
-    const roll = Math.random();
-
-    if (ratio < 0.35) {
-        return roll < 0.7
-            ? shadeColorForNoise(palette.base, 0, hueShift)
-            : shadeColorForNoise(palette.light, 0, hueShift);
-    }
-
-    if (ratio < 0.7) {
-        if (roll < 0.4) return shadeColorForNoise(palette.base, 0, hueShift);
-        if (roll < 0.8) return shadeColorForNoise(palette.light, 0, hueShift);
-        return shadeColorForNoise(palette.lightest, 0, hueShift);
-    }
-
-    if (roll < 0.34) return shadeColorForNoise(palette.base, 0, hueShift);
-    if (roll < 0.68) return shadeColorForNoise(palette.light, 0, hueShift);
-    return shadeColorForNoise(palette.lightest, 0, hueShift);
+    return shadeColorForNoise(chosenColor, 0, hueShift);
 }
 
 function applyPaintNoDirty(x, y, color) {
@@ -7866,6 +8343,248 @@ function useEyedropper(x, y) {
     refreshWorkspacePreview();
 }
 
+function updateOutlineRegionButtonUI() {
+    if (!outlineRegionButton) return;
+
+    outlineRegionButton.disabled = isPlaying || !frames.length;
+    outlineRegionButton.classList.toggle("activeTool", outlineRegionArmed);
+    outlineRegionButton.textContent = outlineRegionArmed ? "Outline Region: ON" : "Outline Region";
+
+    if (outlineRegionModeWrap) {
+        outlineRegionModeWrap.style.display = frames.length ? "grid" : "none";
+        outlineRegionModeWrap.style.opacity = isPlaying ? "0.65" : "1";
+    }
+
+    if (outlineRegionBlackRadio) {
+        outlineRegionBlackRadio.checked = outlineRegionColorMode !== "selected";
+        outlineRegionBlackRadio.disabled = isPlaying || !frames.length;
+    }
+
+    if (outlineRegionSelectedRadio) {
+        outlineRegionSelectedRadio.checked = outlineRegionColorMode === "selected";
+        outlineRegionSelectedRadio.disabled = isPlaying || !frames.length;
+    }
+}
+
+function getConnectedPaintRegionFromClickedLayer(startX, startY) {
+    if (startX < 0 || startY < 0 || startX >= GRID_SIZE || startY >= GRID_SIZE) return null;
+
+    const targetLayerIndex = getTopVisibleEditableLayerIndexAt(startX, startY);
+    if (targetLayerIndex === null || targetLayerIndex === undefined) return null;
+
+    const frame = getCurrentFrame();
+    const targetLayer = frame.layers[targetLayerIndex];
+
+    if (!targetLayer || targetLayer.locked || !targetLayer.visible) {
+        return null;
+    }
+
+    const seedColor = targetLayer.grid[startY][startX];
+    if (seedColor === null) {
+        return null;
+    }
+
+    const stack = [{ x: startX, y: startY }];
+    const visited = new Set();
+    const regionPixels = [];
+    const regionSet = new Set();
+
+    while (stack.length) {
+        const current = stack.pop();
+
+        if (
+            current.x < 0 ||
+            current.y < 0 ||
+            current.x >= GRID_SIZE ||
+            current.y >= GRID_SIZE
+        ) {
+            continue;
+        }
+
+        const key = `${current.x},${current.y}`;
+        if (visited.has(key)) continue;
+
+        const currentColor = targetLayer.grid[current.y][current.x];
+        if (currentColor === null) {
+            continue;
+        }
+
+        visited.add(key);
+        regionSet.add(key);
+
+        regionPixels.push({
+            x: current.x,
+            y: current.y,
+            color: currentColor
+        });
+
+        stack.push({ x: current.x + 1, y: current.y });
+        stack.push({ x: current.x - 1, y: current.y });
+        stack.push({ x: current.x, y: current.y + 1 });
+        stack.push({ x: current.x, y: current.y - 1 });
+    }
+
+    if (!regionPixels.length) {
+        return null;
+    }
+
+    return {
+        layerIndex: targetLayerIndex,
+        pixels: regionPixels,
+        visited: regionSet
+    };
+}
+
+function getPerceivedColorLightness(color) {
+    const rgb = hexToRgb(color);
+    return (rgb.r * 0.2126) + (rgb.g * 0.7152) + (rgb.b * 0.0722);
+}
+
+function getDarkestColorInRegion(regionPixels) {
+    let darkestColor = null;
+    let darkestLightness = Number.POSITIVE_INFINITY;
+
+    for (let i = 0; i < regionPixels.length; i++) {
+        const color = normalizeColor(regionPixels[i].color);
+        if (!color) continue;
+
+        const lightness = getPerceivedColorLightness(color);
+        if (lightness < darkestLightness) {
+            darkestLightness = lightness;
+            darkestColor = color;
+        }
+    }
+
+    return darkestColor;
+}
+
+function getTopVisibleLayerIndexAt(x, y) {
+    if (x < 0 || y < 0 || x >= GRID_SIZE || y >= GRID_SIZE) return null;
+
+    const frame = getCurrentFrame();
+
+    for (let i = frame.layers.length - 1; i >= 0; i--) {
+        const layer = frame.layers[i];
+        if (!layer.visible) continue;
+        if (layer.grid[y][x] !== null) {
+            return i;
+        }
+    }
+
+    return null;
+}
+
+function getOutlineWriteLayerIndex(preferredLayerIndex) {
+    const frame = getCurrentFrame();
+    const preferredLayer = frame.layers[preferredLayerIndex];
+
+    if (preferredLayer && preferredLayer.visible && !preferredLayer.locked) {
+        return preferredLayerIndex;
+    }
+
+    for (let i = frame.layers.length - 1; i >= 0; i--) {
+        const layer = frame.layers[i];
+        if (!layer.visible || layer.locked) continue;
+        return i;
+    }
+
+    return null;
+}
+
+function outlineRegionAt(x, y) {
+    const region = getConnectedPaintRegionFromClickedLayer(x, y);
+
+    if (!region || !region.pixels.length) {
+        refreshWorkspacePreview();
+        return false;
+    }
+
+    const frame = getCurrentFrame();
+    const writeLayerIndex = getOutlineWriteLayerIndex(region.layerIndex);
+
+    if (writeLayerIndex === null || writeLayerIndex === undefined) {
+        refreshWorkspacePreview();
+        return false;
+    }
+
+    const writeLayer = frame.layers[writeLayerIndex];
+    if (!writeLayer || writeLayer.locked || !writeLayer.visible) {
+        refreshWorkspacePreview();
+        return false;
+    }
+
+    const outlineColor = outlineRegionColorMode === "selected"
+        ? normalizeColor(currentColor) || "#000000"
+        : "#000000";
+
+    const outlineTargets = new Map();
+
+    for (let i = 0; i < region.pixels.length; i++) {
+        const pixel = region.pixels[i];
+        const neighbors = [
+            { x: pixel.x + 1, y: pixel.y },
+            { x: pixel.x - 1, y: pixel.y },
+            { x: pixel.x, y: pixel.y + 1 },
+            { x: pixel.x, y: pixel.y - 1 }
+        ];
+
+        for (let j = 0; j < neighbors.length; j++) {
+            const neighbor = neighbors[j];
+
+            if (
+                neighbor.x < 0 ||
+                neighbor.y < 0 ||
+                neighbor.x >= GRID_SIZE ||
+                neighbor.y >= GRID_SIZE
+            ) {
+                continue;
+            }
+
+            const key = `${neighbor.x},${neighbor.y}`;
+
+            if (region.visited.has(key)) {
+                continue;
+            }
+
+            if (getTopVisibleLayerIndexAt(neighbor.x, neighbor.y) !== null) {
+                continue;
+            }
+
+            if (writeLayer.grid[neighbor.y][neighbor.x] !== null) {
+                continue;
+            }
+
+            outlineTargets.set(key, {
+                x: neighbor.x,
+                y: neighbor.y
+            });
+        }
+    }
+
+    if (!outlineTargets.size) {
+        outlineRegionArmed = false;
+        updateOutlineRegionButtonUI();
+        refreshWorkspacePreview();
+        return false;
+    }
+
+    saveState();
+
+    for (const target of outlineTargets.values()) {
+        writeLayer.grid[target.y][target.x] = outlineColor;
+    }
+
+    currentLayerIndex = writeLayerIndex;
+    outlineRegionArmed = false;
+    markCurrentFrameRenderCacheDirty();
+    queueTimelineRefresh();
+    updateOutlineRegionButtonUI();
+    updateFrameUI();
+    updateHistoryUI();
+    refreshWorkspacePreview();
+    return true;
+}
+
 function floodFill(x, y) {
     const activeLayer = getActiveLayer();
     if (activeLayer.locked) return;
@@ -7966,9 +8685,25 @@ function getSuggestedExportScale() {
     return 1;
 }
 
-function getDefaultPngExportFilename(scale = null) {
+function getPngExportNamePresetBaseName(preset = pngExportNamePreset) {
+    if (preset === "sprite") {
+        return `pixel-hammer-sprite-${GRID_SIZE}x${GRID_SIZE}`;
+    }
+
+    if (preset === "tiles") {
+        return `pixel-hammer-tiles-${GRID_SIZE}x${GRID_SIZE}`;
+    }
+
+    if (preset === "stage") {
+        return `pixel-hammer-stage-${GRID_SIZE}x${GRID_SIZE}`;
+    }
+
+    return `pixel-hammer-frame-${currentFrameIndex + 1}-${GRID_SIZE}x${GRID_SIZE}`;
+}
+
+function getDefaultPngExportFilename(scale = null, preset = pngExportNamePreset) {
     const suffix = Number.isFinite(scale) ? `@${scale}x` : "";
-    return `pixel-hammer-frame-${currentFrameIndex + 1}-${GRID_SIZE}x${GRID_SIZE}${suffix}.png`;
+    return `${getPngExportNamePresetBaseName(preset)}${suffix}.png`;
 }
 
 function getPngExportScaleInputs() {
@@ -8014,35 +8749,226 @@ function normalizePngExportFilename(filename, scale, multipleScales) {
     return `${safeName}.png`;
 }
 
-function openPngExportPanel() {
+function ensurePngExportNamePresetControlsExist() {
+    if (!pngExportPanel || !pngExportFilenameInput) return;
+
+    pngExportNamePresetPanel = document.getElementById("pixelForgePngExportNamePresetPanel");
+    pngExportNameSpriteButton = document.getElementById("pixelForgePngExportNameSprite");
+    pngExportNameTilesButton = document.getElementById("pixelForgePngExportNameTiles");
+    pngExportNameStageButton = document.getElementById("pixelForgePngExportNameStage");
+    pngExportNameFrameButton = document.getElementById("pixelForgePngExportNameFrame");
+    sheetColumnsPanel = document.getElementById("pixelForgeSheetColumnsPanel");
+    sheetColumnsInput = document.getElementById("pixelForgeSheetColumnsInput");
+
+    if (!pngExportNamePresetPanel) {
+        pngExportNamePresetPanel = document.createElement("div");
+        pngExportNamePresetPanel.id = "pixelForgePngExportNamePresetPanel";
+        pngExportNamePresetPanel.className = "compactTop";
+        pngExportNamePresetPanel.innerHTML = `
+            <label class="miniLabel">Quick Name</label>
+            <div class="pixelForgeExportNamePresetRow">
+                <button id="pixelForgePngExportNameSprite" class="pixelForgeExportNamePresetButton" type="button">Sprite</button>
+                <button id="pixelForgePngExportNameTiles" class="pixelForgeExportNamePresetButton" type="button">Tiles</button>
+                <button id="pixelForgePngExportNameStage" class="pixelForgeExportNamePresetButton" type="button">Stage</button>
+                <button id="pixelForgePngExportNameFrame" class="pixelForgeExportNamePresetButton" type="button">Frame</button>
+            </div>
+        `;
+
+        pngExportPanel.insertBefore(pngExportNamePresetPanel, pngExportFilenameInput.previousElementSibling);
+    }
+
+    if (!sheetColumnsPanel) {
+        sheetColumnsPanel = document.createElement("div");
+        sheetColumnsPanel.id = "pixelForgeSheetColumnsPanel";
+        sheetColumnsPanel.className = "compactTop";
+        sheetColumnsPanel.style.display = "none";
+        sheetColumnsPanel.innerHTML = `
+            <label for="pixelForgeSheetColumnsInput" class="miniLabel">Wrap Columns</label>
+            <input id="pixelForgeSheetColumnsInput" type="number" min="1" step="1" value="2">
+        `;
+
+        pngExportPanel.insertBefore(sheetColumnsPanel, pngExportFilenameInput);
+    }
+
+    pngExportNamePresetPanel = document.getElementById("pixelForgePngExportNamePresetPanel");
+    pngExportNameSpriteButton = document.getElementById("pixelForgePngExportNameSprite");
+    pngExportNameTilesButton = document.getElementById("pixelForgePngExportNameTiles");
+    pngExportNameStageButton = document.getElementById("pixelForgePngExportNameStage");
+    pngExportNameFrameButton = document.getElementById("pixelForgePngExportNameFrame");
+    sheetColumnsPanel = document.getElementById("pixelForgeSheetColumnsPanel");
+    sheetColumnsInput = document.getElementById("pixelForgeSheetColumnsInput");
+
+    if (pngExportNameSpriteButton && !pngExportNameSpriteButton.dataset.boundExportPreset) {
+        pngExportNameSpriteButton.onclick = () => {
+            pngExportNamePreset = "sprite";
+            if (pngExportFilenameInput) {
+                pngExportFilenameInput.value = getDefaultPngExportFilename();
+                pngExportFilenameInput.focus();
+                pngExportFilenameInput.select();
+            }
+            updatePngExportNamePresetUI();
+        };
+        pngExportNameSpriteButton.dataset.boundExportPreset = "true";
+    }
+
+    if (pngExportNameTilesButton && !pngExportNameTilesButton.dataset.boundExportPreset) {
+        pngExportNameTilesButton.onclick = () => {
+            pngExportNamePreset = "tiles";
+            if (pngExportFilenameInput) {
+                pngExportFilenameInput.value = getDefaultPngExportFilename();
+                pngExportFilenameInput.focus();
+                pngExportFilenameInput.select();
+            }
+            updatePngExportNamePresetUI();
+        };
+        pngExportNameTilesButton.dataset.boundExportPreset = "true";
+    }
+
+    if (pngExportNameStageButton && !pngExportNameStageButton.dataset.boundExportPreset) {
+        pngExportNameStageButton.onclick = () => {
+            pngExportNamePreset = "stage";
+            if (pngExportFilenameInput) {
+                pngExportFilenameInput.value = getDefaultPngExportFilename();
+                pngExportFilenameInput.focus();
+                pngExportFilenameInput.select();
+            }
+            updatePngExportNamePresetUI();
+        };
+        pngExportNameStageButton.dataset.boundExportPreset = "true";
+    }
+
+    if (pngExportNameFrameButton && !pngExportNameFrameButton.dataset.boundExportPreset) {
+        pngExportNameFrameButton.onclick = () => {
+            pngExportNamePreset = "frame";
+            if (pngExportFilenameInput) {
+                pngExportFilenameInput.value = getDefaultPngExportFilename();
+                pngExportFilenameInput.focus();
+                pngExportFilenameInput.select();
+            }
+            updatePngExportNamePresetUI();
+        };
+        pngExportNameFrameButton.dataset.boundExportPreset = "true";
+    }
+}
+
+function updatePngExportNamePresetUI() {
+    ensurePngExportNamePresetControlsExist();
+
+    if (pngExportNameSpriteButton) {
+        pngExportNameSpriteButton.classList.toggle("activeTool", pngExportNamePreset === "sprite");
+        pngExportNameSpriteButton.disabled = isPlaying;
+    }
+
+    if (pngExportNameTilesButton) {
+        pngExportNameTilesButton.classList.toggle("activeTool", pngExportNamePreset === "tiles");
+        pngExportNameTilesButton.disabled = isPlaying;
+    }
+
+    if (pngExportNameStageButton) {
+        pngExportNameStageButton.classList.toggle("activeTool", pngExportNamePreset === "stage");
+        pngExportNameStageButton.disabled = isPlaying;
+    }
+
+    if (pngExportNameFrameButton) {
+        pngExportNameFrameButton.classList.toggle("activeTool", pngExportNamePreset === "frame");
+        pngExportNameFrameButton.disabled = isPlaying;
+    }
+}
+
+function updateExportPanelModeUI() {
+    ensurePngExportNamePresetControlsExist();
+
+    const wrappedMode = exportPanelMode === "sheetWrap";
+
+    if (sheetColumnsPanel) {
+        sheetColumnsPanel.style.display = wrappedMode ? "block" : "none";
+    }
+
+    if (sheetColumnsInput) {
+        sheetColumnsInput.disabled = isPlaying || !wrappedMode;
+    }
+
+    if (pngExportApplyButton) {
+        if (exportPanelMode === "sheetH") {
+            pngExportApplyButton.textContent = "Save Sheet H";
+        } else if (exportPanelMode === "sheetV") {
+            pngExportApplyButton.textContent = "Save Sheet V";
+        } else if (exportPanelMode === "sheetWrap") {
+            pngExportApplyButton.textContent = "Save Wrap Sheet";
+        } else {
+            pngExportApplyButton.textContent = "Save PNG";
+        }
+    }
+}
+
+function openPngExportPanel(mode = "png") {
+    exportPanelMode = mode;
+
     if (!pngExportPanel) {
-        exportPNG();
+        if (mode === "sheetH") {
+            exportSpritesheetHorizontal();
+        } else if (mode === "sheetV") {
+            exportSpritesheetVertical();
+        } else if (mode === "sheetWrap") {
+            exportSpritesheetWrapped();
+        } else {
+            exportPNG();
+        }
         return;
     }
 
-    openFoldoutForElement(exportButton);
+    ensurePngExportNamePresetControlsExist();
+    openFoldoutForElement(
+        mode === "sheetH"
+            ? exportSpritesheetButton
+            : mode === "sheetV"
+                ? exportSpritesheetVerticalButton
+                : mode === "sheetWrap"
+                    ? exportSpritesheetWrappedButton
+                    : exportButton
+    );
 
     pngExportPanel.style.display = "block";
 
+    if (sheetColumnsInput && !sheetColumnsInput.value) {
+        sheetColumnsInput.value = String(Math.min(4, Math.max(1, frames.length)));
+    }
+
     if (pngExportFilenameInput) {
-        pngExportFilenameInput.value = getDefaultPngExportFilename();
+        if (mode === "sheetH") {
+            pngExportFilenameInput.value = `pixel-hammer-spritesheet-h-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}.png`;
+        } else if (mode === "sheetV") {
+            pngExportFilenameInput.value = `pixel-hammer-spritesheet-v-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}.png`;
+        } else if (mode === "sheetWrap") {
+            const columns = Math.min(4, Math.max(1, frames.length));
+            pngExportFilenameInput.value = `pixel-hammer-spritesheet-wrap-${columns}c-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}.png`;
+        } else {
+            pngExportFilenameInput.value = getDefaultPngExportFilename();
+        }
+
         pngExportFilenameInput.focus();
         pngExportFilenameInput.select();
     }
 
     setSuggestedPngExportScales();
+    updatePngExportNamePresetUI();
+    updateExportPanelModeUI();
 }
 
 function closePngExportPanel() {
     if (!pngExportPanel) return;
     pngExportPanel.style.display = "none";
+    exportPanelMode = "png";
+    updateExportPanelModeUI();
 }
 
 function triggerCanvasDownload(exportCanvas, filename) {
     const link = document.createElement("a");
     link.download = filename;
     link.href = exportCanvas.toDataURL("image/png");
+    document.body.appendChild(link);
     link.click();
+    link.remove();
 }
 
 function exportPNG() {
@@ -8071,10 +8997,10 @@ function renderFrameToSheetContext(sheetCtx, frame, offsetX, offsetY) {
     sheetCtx.drawImage(frameCanvas, offsetX, offsetY);
 }
 
-function exportSpritesheetHorizontal() {
+function exportSpritesheetHorizontal(scaleOverride = null) {
     openFoldoutForElement(exportSpritesheetButton);
 
-    const scale = promptExportScale("Horizontal sheet export scale");
+    const scale = scaleOverride ?? promptExportScale("Horizontal sheet export scale");
     if (scale === null) return;
 
     const baseCanvas = document.createElement("canvas");
@@ -8091,17 +9017,20 @@ function exportSpritesheetHorizontal() {
     }
 
     const exportCanvas = buildScaledExportCanvas(baseCanvas, scale);
+    const baseFilename = pngExportFilenameInput
+        ? pngExportFilenameInput.value
+        : `pixel-hammer-spritesheet-h-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}.png`;
 
     triggerCanvasDownload(
         exportCanvas,
-        `pixel-hammer-spritesheet-h-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}@${scale}x.png`
+        normalizePngExportFilename(baseFilename, scale, false)
     );
 }
 
-function exportSpritesheetVertical() {
+function exportSpritesheetVertical(scaleOverride = null) {
     openFoldoutForElement(exportSpritesheetVerticalButton);
 
-    const scale = promptExportScale("Vertical sheet export scale");
+    const scale = scaleOverride ?? promptExportScale("Vertical sheet export scale");
     if (scale === null) return;
 
     const baseCanvas = document.createElement("canvas");
@@ -8118,22 +9047,22 @@ function exportSpritesheetVertical() {
     }
 
     const exportCanvas = buildScaledExportCanvas(baseCanvas, scale);
+    const baseFilename = pngExportFilenameInput
+        ? pngExportFilenameInput.value
+        : `pixel-hammer-spritesheet-v-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}.png`;
 
     triggerCanvasDownload(
         exportCanvas,
-        `pixel-hammer-spritesheet-v-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}@${scale}x.png`
+        normalizePngExportFilename(baseFilename, scale, false)
     );
 }
 
-function exportSpritesheetWrapped() {
+function exportSpritesheetWrapped(columnsOverride = null, scaleOverride = null) {
     openFoldoutForElement(exportSpritesheetWrappedButton);
 
     const defaultColumns = Math.min(4, Math.max(1, frames.length));
-    const response = prompt("Wrapped spritesheet columns:", String(defaultColumns));
-    if (response === null) return;
-
-    const columns = Math.max(1, parseInt(response, 10) || defaultColumns);
-    const scale = promptExportScale("Wrapped sheet export scale");
+    const columns = Math.max(1, parseInt(columnsOverride, 10) || defaultColumns);
+    const scale = scaleOverride ?? promptExportScale("Wrapped sheet export scale");
     if (scale === null) return;
 
     const rows = Math.ceil(frames.length / columns);
@@ -8154,10 +9083,13 @@ function exportSpritesheetWrapped() {
     }
 
     const exportCanvas = buildScaledExportCanvas(baseCanvas, scale);
+    const baseFilename = pngExportFilenameInput
+        ? pngExportFilenameInput.value
+        : `pixel-hammer-spritesheet-wrap-${columns}c-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}.png`;
 
     triggerCanvasDownload(
         exportCanvas,
-        `pixel-hammer-spritesheet-wrap-${columns}c-${frames.length}f-${GRID_SIZE}x${GRID_SIZE}@${scale}x.png`
+        normalizePngExportFilename(baseFilename, scale, false)
     );
 }
 
@@ -8170,8 +9102,21 @@ function loadImageFileAsExactGrid(file, onSuccess) {
         const image = new Image();
 
         image.onload = () => {
-            if (image.width !== GRID_SIZE || image.height !== GRID_SIZE) {
-                alert(`Import failed. Image must be exactly ${GRID_SIZE}x${GRID_SIZE} pixels for the current canvas size.`);
+            const widthScale = image.width / GRID_SIZE;
+            const heightScale = image.height / GRID_SIZE;
+
+            const isExactSize = image.width === GRID_SIZE && image.height === GRID_SIZE;
+            const isWholeNumberScaledSize =
+                Number.isInteger(widthScale) &&
+                Number.isInteger(heightScale) &&
+                widthScale >= 1 &&
+                heightScale >= 1 &&
+                widthScale === heightScale;
+
+            if (!isExactSize && !isWholeNumberScaledSize) {
+                alert(
+                    `Import failed. Image must be ${GRID_SIZE}x${GRID_SIZE} or a whole-number scaled version like ${GRID_SIZE * 2}x${GRID_SIZE * 2}, ${GRID_SIZE * 4}x${GRID_SIZE * 4}, or larger.`
+                );
                 return;
             }
 
@@ -8183,7 +9128,7 @@ function loadImageFileAsExactGrid(file, onSuccess) {
 
             sampleCtx.imageSmoothingEnabled = false;
             sampleCtx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
-            sampleCtx.drawImage(image, 0, 0);
+            sampleCtx.drawImage(image, 0, 0, image.width, image.height, 0, 0, GRID_SIZE, GRID_SIZE);
 
             const imageData = sampleCtx.getImageData(0, 0, GRID_SIZE, GRID_SIZE).data;
             const importedGrid = createBlankGrid();
@@ -8277,19 +9222,19 @@ function gridFromImageRegion(image, sx, sy, sw, sh) {
     const sampleCanvas = document.createElement("canvas");
     const sampleCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
 
-    sampleCanvas.width = sw;
-    sampleCanvas.height = sh;
+    sampleCanvas.width = GRID_SIZE;
+    sampleCanvas.height = GRID_SIZE;
 
     sampleCtx.imageSmoothingEnabled = false;
-    sampleCtx.clearRect(0, 0, sw, sh);
-    sampleCtx.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+    sampleCtx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
+    sampleCtx.drawImage(image, sx, sy, sw, sh, 0, 0, GRID_SIZE, GRID_SIZE);
 
-    const imageData = sampleCtx.getImageData(0, 0, sw, sh).data;
+    const imageData = sampleCtx.getImageData(0, 0, GRID_SIZE, GRID_SIZE).data;
     const grid = createBlankGrid();
 
-    for (let y = 0; y < sh; y++) {
-        for (let x = 0; x < sw; x++) {
-            const index = (y * sw + x) * 4;
+    for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+            const index = (y * GRID_SIZE + x) * 4;
             const r = imageData[index];
             const g = imageData[index + 1];
             const b = imageData[index + 2];
@@ -8306,26 +9251,60 @@ function gridFromImageRegion(image, sx, sy, sw, sh) {
     return grid;
 }
 
-function promptSpritesheetImportOptions(image) {
-    const widthResponse = prompt("Frame width:", String(GRID_SIZE));
-    if (widthResponse === null) return null;
-    const frameWidth = parseInt(widthResponse, 10);
+function parseSpritesheetFilenameHints(filename) {
+    const safeName = String(filename || "").toLowerCase();
 
-    const heightResponse = prompt("Frame height:", String(GRID_SIZE));
-    if (heightResponse === null) return null;
-    const frameHeight = parseInt(heightResponse, 10);
+    const hints = {
+        layout: null,
+        columns: null,
+        frameCount: null,
+        sourceGridSize: null,
+        scale: null,
+        frameWidth: null,
+        frameHeight: null
+    };
 
-    if (!Number.isFinite(frameWidth) || !Number.isFinite(frameHeight) || frameWidth <= 0 || frameHeight <= 0) {
-        alert("Invalid frame size.");
-        return null;
+    const wrapMatch = safeName.match(/spritesheet-wrap-(\d+)c-(\d+)f-(\d+)x(\d+)(?:@(\d+)x)?\.png$/);
+    if (wrapMatch) {
+        hints.layout = "grid";
+        hints.columns = parseInt(wrapMatch[1], 10) || null;
+        hints.frameCount = parseInt(wrapMatch[2], 10) || null;
+        hints.sourceGridSize = parseInt(wrapMatch[3], 10) || null;
+        hints.scale = parseInt(wrapMatch[5], 10) || 1;
     }
 
-    if (frameWidth !== GRID_SIZE || frameHeight !== GRID_SIZE) {
-        alert(`No scaling is enabled. Frame size must be exactly ${GRID_SIZE}x${GRID_SIZE}.`);
-        return null;
+    const horizontalMatch = safeName.match(/spritesheet-h-(\d+)f-(\d+)x(\d+)(?:@(\d+)x)?\.png$/);
+    if (horizontalMatch) {
+        hints.layout = "horizontal";
+        hints.frameCount = parseInt(horizontalMatch[1], 10) || null;
+        hints.sourceGridSize = parseInt(horizontalMatch[2], 10) || null;
+        hints.scale = parseInt(horizontalMatch[4], 10) || 1;
     }
 
-    const layoutResponse = prompt("Layout: horizontal / vertical / grid", "horizontal");
+    const verticalMatch = safeName.match(/spritesheet-v-(\d+)f-(\d+)x(\d+)(?:@(\d+)x)?\.png$/);
+    if (verticalMatch) {
+        hints.layout = "vertical";
+        hints.frameCount = parseInt(verticalMatch[1], 10) || null;
+        hints.sourceGridSize = parseInt(verticalMatch[2], 10) || null;
+        hints.scale = parseInt(verticalMatch[4], 10) || 1;
+    }
+
+    if (hints.sourceGridSize && hints.scale) {
+        hints.frameWidth = hints.sourceGridSize * hints.scale;
+        hints.frameHeight = hints.sourceGridSize * hints.scale;
+    }
+
+    return hints;
+}
+
+function promptSpritesheetImportOptions(image, file = null) {
+    const filenameHints = parseSpritesheetFilenameHints(file && file.name ? file.name : "");
+
+    const inferredLayout =
+        filenameHints.layout ||
+        (image.width > image.height ? "horizontal" : image.height > image.width ? "vertical" : "grid");
+
+    const layoutResponse = prompt("Layout: horizontal / vertical / grid", inferredLayout);
     if (layoutResponse === null) return null;
     const layout = layoutResponse.trim().toLowerCase();
 
@@ -8334,15 +9313,74 @@ function promptSpritesheetImportOptions(image) {
         return null;
     }
 
+    let inferredFrameWidth = filenameHints.frameWidth || GRID_SIZE;
+    let inferredFrameHeight = filenameHints.frameHeight || GRID_SIZE;
+
+    if (!filenameHints.frameWidth || !filenameHints.frameHeight) {
+        if (layout === "horizontal") {
+            const candidate = image.height;
+            if (candidate >= GRID_SIZE && candidate % GRID_SIZE === 0) {
+                inferredFrameWidth = candidate;
+                inferredFrameHeight = candidate;
+            }
+        } else if (layout === "vertical") {
+            const candidate = image.width;
+            if (candidate >= GRID_SIZE && candidate % GRID_SIZE === 0) {
+                inferredFrameWidth = candidate;
+                inferredFrameHeight = candidate;
+            }
+        } else {
+            const squareCandidate = Math.min(image.width, image.height);
+            if (squareCandidate >= GRID_SIZE && squareCandidate % GRID_SIZE === 0) {
+                inferredFrameWidth = squareCandidate;
+                inferredFrameHeight = squareCandidate;
+            }
+        }
+    }
+
+    const widthResponse = prompt("Frame width:", String(inferredFrameWidth));
+    if (widthResponse === null) return null;
+    const frameWidth = parseInt(widthResponse, 10);
+
+    const heightResponse = prompt("Frame height:", String(inferredFrameHeight));
+    if (heightResponse === null) return null;
+    const frameHeight = parseInt(heightResponse, 10);
+
+    if (!Number.isFinite(frameWidth) || !Number.isFinite(frameHeight) || frameWidth <= 0 || frameHeight <= 0) {
+        alert("Invalid frame size.");
+        return null;
+    }
+
+    const widthScale = frameWidth / GRID_SIZE;
+    const heightScale = frameHeight / GRID_SIZE;
+    const isExactSize = frameWidth === GRID_SIZE && frameHeight === GRID_SIZE;
+    const isWholeNumberScaledSize =
+        Number.isInteger(widthScale) &&
+        Number.isInteger(heightScale) &&
+        widthScale >= 1 &&
+        heightScale >= 1 &&
+        widthScale === heightScale;
+
+    if (!isExactSize && !isWholeNumberScaledSize) {
+        alert(
+            `Frame size must be ${GRID_SIZE}x${GRID_SIZE} or a whole-number scaled version like ${GRID_SIZE * 2}x${GRID_SIZE * 2}, ${GRID_SIZE * 4}x${GRID_SIZE * 4}, or larger.`
+        );
+        return null;
+    }
+
     let columns = 0;
     if (layout === "grid") {
-        const defaultColumns = Math.max(1, Math.floor(image.width / frameWidth));
+        const defaultColumns =
+            filenameHints.columns ||
+            Math.max(1, Math.floor(image.width / frameWidth));
+
         const columnsResponse = prompt("Grid columns:", String(defaultColumns));
         if (columnsResponse === null) return null;
         columns = Math.max(1, parseInt(columnsResponse, 10) || defaultColumns);
     }
 
-    const countResponse = prompt("Optional frame count (leave blank for all):", "");
+    const defaultFrameCount = filenameHints.frameCount ? String(filenameHints.frameCount) : "";
+    const countResponse = prompt("Optional frame count (leave blank for all):", defaultFrameCount);
     if (countResponse === null) return null;
 
     const frameCount = countResponse.trim() === "" ? null : Math.max(1, parseInt(countResponse, 10) || 1);
@@ -8363,7 +9401,7 @@ function importSpritesheet(file) {
     }
 
     loadImageElementFromFile(file, (image) => {
-        const options = promptSpritesheetImportOptions(image);
+        const options = promptSpritesheetImportOptions(image, file);
         if (!options) return;
 
         const { frameWidth, frameHeight, layout, columns, frameCount } = options;
@@ -8957,28 +9995,85 @@ if (importSpritesheetInput) {
     };
 }
 
-if (exportButton) {
-    exportButton.onclick = () => openPngExportPanel();
+if (exportButton && !exportButton.dataset.boundExportPng) {
+    exportButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPngExportPanel();
+    });
+    exportButton.dataset.boundExportPng = "true";
 }
 
-if (pngExportApplyButton) {
-    pngExportApplyButton.onclick = () => exportPNG();
+if (pngExportApplyButton && !pngExportApplyButton.dataset.boundExportPngApply) {
+    pngExportApplyButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const scales = getSelectedPngExportScales();
+        if (!scales.length) {
+            alert("Select at least one PNG export scale.");
+            return;
+        }
+
+        if (exportPanelMode === "sheetH") {
+            exportSpritesheetHorizontal(scales[0]);
+            closePngExportPanel();
+            return;
+        }
+
+        if (exportPanelMode === "sheetV") {
+            exportSpritesheetVertical(scales[0]);
+            closePngExportPanel();
+            return;
+        }
+
+        if (exportPanelMode === "sheetWrap") {
+            const columns = sheetColumnsInput ? sheetColumnsInput.value : 1;
+            exportSpritesheetWrapped(columns, scales[0]);
+            closePngExportPanel();
+            return;
+        }
+
+        exportPNG();
+        closePngExportPanel();
+    });
+    pngExportApplyButton.dataset.boundExportPngApply = "true";
 }
 
-if (pngExportCloseButton) {
-    pngExportCloseButton.onclick = () => closePngExportPanel();
+if (pngExportCloseButton && !pngExportCloseButton.dataset.boundExportPngClose) {
+    pngExportCloseButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closePngExportPanel();
+    });
+    pngExportCloseButton.dataset.boundExportPngClose = "true";
 }
 
-if (exportSpritesheetButton) {
-    exportSpritesheetButton.onclick = () => exportSpritesheetHorizontal();
+if (exportSpritesheetButton && !exportSpritesheetButton.dataset.boundExportSheetH) {
+    exportSpritesheetButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPngExportPanel("sheetH");
+    });
+    exportSpritesheetButton.dataset.boundExportSheetH = "true";
 }
 
-if (exportSpritesheetVerticalButton) {
-    exportSpritesheetVerticalButton.onclick = () => exportSpritesheetVertical();
+if (exportSpritesheetVerticalButton && !exportSpritesheetVerticalButton.dataset.boundExportSheetV) {
+    exportSpritesheetVerticalButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPngExportPanel("sheetV");
+    });
+    exportSpritesheetVerticalButton.dataset.boundExportSheetV = "true";
 }
 
-if (exportSpritesheetWrappedButton) {
-    exportSpritesheetWrappedButton.onclick = () => exportSpritesheetWrapped();
+if (exportSpritesheetWrappedButton && !exportSpritesheetWrappedButton.dataset.boundExportSheetWrapped) {
+    exportSpritesheetWrappedButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPngExportPanel("sheetWrap");
+    });
+    exportSpritesheetWrappedButton.dataset.boundExportSheetWrapped = "true";
 }
 
 if (previewButton) {
@@ -8996,6 +10091,24 @@ if (playAnimationButton) {
 
 if (stopAnimationButton) {
     stopAnimationButton.onclick = () => stopPlayback(true);
+}
+
+if (onionSkinToggleButton) {
+    onionSkinToggleButton.onclick = () => {
+        if (isPlaying) return;
+
+        if (GRID_SIZE >= 512) {
+            onionSkinEnabled = false;
+            updateOnionSkinUI();
+            refreshWorkspacePreview();
+            return;
+        }
+
+        onionSkinEnabled = !onionSkinEnabled;
+        openFoldoutForElement(onionSkinToggleButton);
+        updateOnionSkinUI();
+        refreshWorkspacePreview();
+    };
 }
 
 if (playbackModeSelect) {
@@ -9210,7 +10323,7 @@ function applyProjectData(projectState) {
     updateHistoryUI();
     updateLayerUI();
     updateNoiseUI();
-    updateVariantNoiseUI();
+    updateColorThemeUI();
 
     if (tileCtx && tileCanvas) {
         tileCtx.clearRect(0, 0, tileCanvas.width, tileCanvas.height);
@@ -9239,6 +10352,14 @@ if (showTilesetModeButton) {
         openFoldoutForElement(showTilesetModeButton);
         updateWorkspaceModeUI();
         refreshWorkspacePreview();
+    };
+}
+
+if (workspaceAddFrameButton) {
+    workspaceAddFrameButton.onclick = () => {
+        if (isPlaying) return;
+        currentWorkspaceMode = "frames";
+        addFrame(workspaceAddFrameButton);
     };
 }
 
@@ -9366,7 +10487,7 @@ if (canvasSizeSelector) {
         updateHistoryUI();
         updateLayerUI();
         updateNoiseUI();
-        updateVariantNoiseUI();
+        updateColorThemeUI();
         updateBrushUI();
 
         if (playbackModeSelect) {
@@ -9416,7 +10537,7 @@ canvas.addEventListener("pointerdown", (e) => {
 
     if (
         getActiveLayer().locked &&
-        (currentTool === "pencil" || currentTool === "fill" || currentTool === "line" || currentTool === "rect" || currentTool === "ellipse")
+        (currentTool === "pencil" || currentTool === "fill" || currentTool === "line" || currentTool === "rect" || currentTool === "ellipse" || outlineRegionArmed)
     ) {
         return;
     }
@@ -9433,6 +10554,13 @@ canvas.addEventListener("pointerdown", (e) => {
         } catch (error) {
             // ignore capture failures
         }
+    }
+
+    if (outlineRegionArmed) {
+        if (e.button !== 0) return;
+        ditherOrigin = null;
+        outlineRegionAt(pos.x, pos.y);
+        return;
     }
 
     if (currentTool === "eyedropper") {
@@ -9456,15 +10584,8 @@ canvas.addEventListener("pointerdown", (e) => {
             return;
         }
 
-        if (lineStartPoint && samePixel(pos, lineStartPoint) && !samePixel(lineAnchor, lineStartPoint)) {
-            commitLineSegment(lineAnchor, lineStartPoint);
-            finishLinePath();
-            return;
-        }
-
         commitLineSegment(lineAnchor, pos);
-        lineAnchor = pos;
-        refreshWorkspacePreview();
+        finishLinePath();
         return;
     }
 
@@ -9698,9 +10819,6 @@ window.addEventListener("pointerup", (e) => {
             }
         }
         clearRectState();
-        handledOwnRefresh = true;
-    } else if (currentTool === "line" && lineAnchor && lineStartPoint && hoverPixel) {
-        commitLineSegment(lineAnchor, hoverPixel);
         handledOwnRefresh = true;
     }
 
@@ -10148,7 +11266,7 @@ function initializeApp() {
     updateVariantUI();
     updateAdvancedLayerUI();
     updateNoiseUI();
-    updateVariantNoiseUI();
+    updateColorThemeUI();
     syncFoldoutUI();
 
     if (gridButton) {
@@ -10178,7 +11296,7 @@ function initializeApp() {
         ensureShapeToolControlsExist();
         ensureFlipControlsExist();
         ensureNoiseControlsExist();
-        ensureVariantNoiseControlsExist();
+        ensureColorThemeControlsExist();
         refreshPaletteUI();
         updateColorPanelUI();
         updateHistoryUI();
@@ -10188,7 +11306,7 @@ function initializeApp() {
         updateVariantUI();
         updateAdvancedLayerUI();
         updateNoiseUI();
-        updateVariantNoiseUI();
+        updateColorThemeUI();
         updateEditPanelVisibility();
         syncFoldoutUI();
         centerCanvasViewport();
@@ -10202,7 +11320,7 @@ function forcePaletteRefreshAfterModuleLoad() {
     ensureShapeToolControlsExist();
     ensureFlipControlsExist();
     ensureNoiseControlsExist();
-    ensureVariantNoiseControlsExist();
+    ensureColorThemeControlsExist();
     applyPaletteLayout();
     setCurrentColor(currentColor, { skipRecent: true });
     refreshPaletteUI();
@@ -10214,13 +11332,14 @@ function forcePaletteRefreshAfterModuleLoad() {
     updateVariantUI();
     updateAdvancedLayerUI();
     updateNoiseUI();
-    updateVariantNoiseUI();
+    updateColorThemeUI();
     updateEditPanelVisibility();
     syncFoldoutUI();
     refreshWorkspacePreview();
 }
 
 syncPaletteBridge();
+applyColorTheme("reset", { skipRefresh: true });
 window.PixelForgeInitializeApp = initializeApp;
 window.PixelForgeForcePaletteRefresh = forcePaletteRefreshAfterModuleLoad;
 setTimeout(initializeApp, 0);

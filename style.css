@@ -548,6 +548,23 @@ gap: 6px;
 grid-column: 1 / -1;
 }
 
+.colorThemeGrid {
+display: grid;
+grid-template-columns: repeat(4, minmax(0, 1fr));
+gap: 6px;
+}
+
+.colorThemeGrid button {
+min-width: 0;
+}
+
+.colorThemeButtonActive {
+background: #1f9d55 !important;
+border-color: #2ecc71 !important;
+color: #ffffff !important;
+box-shadow: 0 0 0 1px rgba(125, 255, 155, 0.25) inset;
+}
+
 .pngExportPanel {
 margin-top: 10px;
 padding: 10px;

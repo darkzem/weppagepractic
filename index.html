@@ -110,13 +110,13 @@
             <summary>Canvas / Import / Export</summary>
             <div class="panelBlock">
                 <div class="compactGrid">
-                    <button id="importPNG">Import PNG</button>
-                    <button id="importPNGNewFrame">Import New Frame</button>
-                    <button id="importSpritesheet" class="compactButton">Import Sheet</button>
-                    <button id="exportPNG">Export PNG</button>
-                    <button id="exportSpritesheet">Sheet H</button>
-                    <button id="exportSpritesheetVertical">Sheet V</button>
-                    <button id="exportSpritesheetWrapped">Wrap Sheet</button>
+                    <button id="importPNG" type="button">Import PNG</button>
+                    <button id="importPNGNewFrame" type="button">Import New Frame</button>
+                    <button id="importSpritesheet" class="compactButton" type="button">Import Sheet</button>
+                    <button id="exportPNG" type="button">Export PNG</button>
+                    <button id="exportSpritesheet" type="button">Sheet H</button>
+                    <button id="exportSpritesheetVertical" type="button">Sheet V</button>
+                    <button id="exportSpritesheetWrapped" type="button">Wrap Sheet</button>
                 </div>
 
                 <div id="pngExportPanel" class="pngExportPanel" style="display: none;">
@@ -205,6 +205,10 @@
                     <div class="buttonGrid">
                         <button id="showFramesMode" class="activeTool">Frames</button>
                         <button id="showTilesetMode">Tileset Preview</button>
+                    </div>
+
+                    <div class="panelBlock">
+                        <button id="workspaceAddFrameButton" class="fullButton compactButton">ADD Frame</button>
                     </div>
 
                     <div class="panelBlock">
@@ -299,7 +303,7 @@
                     </div>
 
                     <div class="panelBlock">
-                        <h3>Palette Variant</h3>
+                        <h3>Recolor Sprite</h3>
 
                         <label for="variantMode" class="miniLabel">Mode</label>
                         <select id="variantMode">
@@ -308,11 +312,11 @@
                         </select>
 
                         <div class="buttonGrid compactTop">
-                            <button id="generateVariant">Generate</button>
+                            <button id="generateVariant">Recolor</button>
                             <button id="rerollVariant">Reroll</button>
                         </div>
 
-                        <div id="variantStatus">Current frame only</div>
+                        <div id="variantStatus">Recolors current frame only</div>
                     </div>
                 </div>
             </details>
