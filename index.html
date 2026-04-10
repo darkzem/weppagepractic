@@ -12,6 +12,7 @@
 
     <aside id="tools">
         <h1>Pixel Hammer</h1>
+        <button id="helpHotkeysToggle" class="fullButton compactButton helpHotkeysButton" type="button">Help / Hotkeys</button>
 
         <details class="foldoutSection" open>
             <summary>Tools</summary>
@@ -40,8 +41,20 @@
                     <option value="dither">Dither</option>
                 </select>
 
-                <div class="buttonGrid compactTop">
-                    <button id="mirrorToggle">Mirror</button>
+                <div class="mirrorViewRow compactTop">
+                    <div class="mirrorControlStack">
+                        <button id="mirrorToggle" class="mirrorMainButton">Mirror</button>
+                        <div class="mirrorAxisRow">
+                            <label class="mirrorAxisOption" for="mirrorHorizontalToggle">
+                                <input id="mirrorHorizontalToggle" type="checkbox" checked>
+                                <span>H</span>
+                            </label>
+                            <label class="mirrorAxisOption" for="mirrorVerticalToggle">
+                                <input id="mirrorVerticalToggle" type="checkbox">
+                                <span>V</span>
+                            </label>
+                        </div>
+                    </div>
                     <button id="toggleGrid">Toggle Grid</button>
                 </div>
 
@@ -323,6 +336,91 @@
         </aside>
     </main>
 
+</div>
+
+<div id="helpHotkeysModal" class="helpHotkeysModal" hidden>
+    <div class="helpHotkeysCard">
+        <div class="helpHotkeysHeader">
+            <h2>Pixel Hammer Help & Hotkeys</h2>
+            <button id="helpHotkeysClose" type="button" class="compactButton">Close</button>
+        </div>
+
+        <div class="helpHotkeysBody">
+            <div class="helpHotkeysSection">
+                <h3>Left Panel — Tools / Brush / Canvas</h3>
+                <ul>
+                    <li><strong>Pencil</strong> draws with the current color.</li>
+                    <li><strong>Line</strong> places straight pixel lines.</li>
+                    <li><strong>Eraser</strong> removes pixels.</li>
+                    <li><strong>Fill</strong> flood-fills connected pixels.</li>
+                    <li><strong>Select</strong> highlights, moves, and captures custom brush regions.</li>
+                    <li><strong>Eyedropper</strong> picks a color from the canvas.</li>
+                    <li><strong>Brush Size</strong> changes the active brush shape or size.</li>
+                    <li><strong>Mirror</strong> turns mirror drawing on or off.</li>
+                    <li><strong>H</strong> mirrors horizontally. This is the default axis when Mirror turns on.</li>
+                    <li><strong>V</strong> mirrors vertically. If H and V are both checked, both directions are used.</li>
+                    <li><strong>Toggle Grid</strong> shows or hides the drawing grid.</li>
+                    <li><strong>Onion Skin</strong> shows nearby animation frames when available.</li>
+                    <li><strong>Zoom</strong> changes the canvas view without changing export size.</li>
+                    <li><strong>Import PNG</strong> loads an image into the current frame.</li>
+                    <li><strong>Import New Frame</strong> loads an image into a newly created frame.</li>
+                    <li><strong>Import Sheet</strong> slices a spritesheet into frames.</li>
+                    <li><strong>Export PNG</strong> exports the current frame.</li>
+                    <li><strong>Sheet H / Sheet V / Wrap Sheet</strong> export animation frames as spritesheets.</li>
+                    <li><strong>Canvas Size</strong> changes document resolution.</li>
+                </ul>
+            </div>
+
+            <div class="helpHotkeysSection">
+                <h3>Right Panel — Edit / Workspace / Color</h3>
+                <ul>
+                    <li><strong>Undo / Redo</strong> step backward or forward through history.</li>
+                    <li><strong>Frames / Tileset Preview</strong> switches the workspace view.</li>
+                    <li><strong>ADD Frame</strong> adds a frame quickly.</li>
+                    <li><strong>Hide Workspace Panel</strong> collapses the workspace section.</li>
+                    <li><strong>Prev / Next</strong> move between frames when frame arrows are shown.</li>
+                    <li><strong>Add / Dup / Delete Frame</strong> manage animation frames.</li>
+                    <li><strong>Frame Hold</strong> changes how long the selected frame stays on screen.</li>
+                    <li><strong>Play / Stop</strong> preview animation playback.</li>
+                    <li><strong>FPS</strong> changes playback speed.</li>
+                    <li><strong>Mode</strong> switches playback behavior such as Loop or Ping-Pong.</li>
+                    <li><strong>Color picker / shade bar / palettes</strong> control color choice and saved swatches.</li>
+                    <li><strong>Variant controls</strong> generate and reroll color variants.</li>
+                    <li><strong>Layer controls</strong> appear when multi-layer mode is enabled.</li>
+                    <li><strong>Preview panel controls</strong> update based on frame count, layer mode, and workspace mode.</li>
+                </ul>
+            </div>
+
+            <div class="helpHotkeysSection">
+                <h3>Hotkeys</h3>
+                <ul>
+                    <li><strong>Ctrl + Z</strong> Undo</li>
+                    <li><strong>Ctrl + Y</strong> Redo</li>
+                    <li><strong>Ctrl + Shift + Z</strong> Redo</li>
+                    <li><strong>Ctrl + S</strong> Save project file</li>
+                    <li><strong>Ctrl + O</strong> Load project file</li>
+                    <li><strong>P</strong> Pencil</li>
+                    <li><strong>N</strong> Line tool</li>
+                    <li><strong>R</strong> Rectangle tool</li>
+                    <li><strong>C</strong> Ellipse tool</li>
+                    <li><strong>I</strong> Eyedropper</li>
+                    <li><strong>O</strong> Onion Skin on/off when available</li>
+                    <li><strong>V</strong> Generate variant</li>
+                    <li><strong>B</strong> Reroll variant</li>
+                    <li><strong>M</strong> Toggle Mirror on/off</li>
+                    <li><strong>Arrow Left / Arrow Right</strong> Frame navigation or frame movement depending on frame mode</li>
+                    <li><strong>Arrow keys</strong> nudge the active selection when a floating selection exists</li>
+                    <li><strong>[</strong> move timeline window left</li>
+                    <li><strong>]</strong> move timeline window right</li>
+                    <li><strong>Space</strong> Play / Stop playback</li>
+                    <li><strong>Enter</strong> confirm line, selection, or active shape action</li>
+                    <li><strong>Escape</strong> cancel or clear the active line / shape / selection state</li>
+                    <li><strong>F1</strong> open or close this help sheet</li>
+                    <li><strong>?</strong> open or close this help sheet</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="app.js"></script>

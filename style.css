@@ -660,6 +660,135 @@ width: 100%;
 margin-top: 6px;
 }
 
+.helpHotkeysButton {
+margin-bottom: 12px;
+}
+
+.mirrorViewRow {
+display: grid;
+grid-template-columns: repeat(2, minmax(0, 1fr));
+gap: 8px;
+align-items: stretch;
+}
+
+.mirrorControlStack {
+display: grid;
+grid-template-rows: auto auto;
+gap: 4px;
+min-width: 0;
+}
+
+.mirrorMainButton {
+padding: 4px 6px !important;
+min-height: 18px !important;
+font-size: 11px !important;
+line-height: 1.05;
+font-weight: 600;
+}
+
+.mirrorAxisRow {
+display: grid;
+grid-template-columns: repeat(2, minmax(0, 1fr));
+gap: 4px;
+}
+
+.mirrorAxisOption {
+display: inline-flex;
+align-items: center;
+justify-content: center;
+gap: 4px;
+min-height: 18px;
+padding: 4px 6px;
+background: #2b2b2b;
+border: 1px solid #555;
+border-radius: 6px;
+font-size: 11px;
+line-height: 1;
+cursor: pointer;
+user-select: none;
+}
+
+.mirrorAxisOption:hover {
+background: #3a3a3a;
+}
+
+.mirrorAxisOption input {
+margin: 0;
+}
+
+.helpHotkeysModal[hidden] {
+display: none !important;
+}
+
+.helpHotkeysModal {
+position: fixed;
+inset: 0;
+z-index: 2000;
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 24px;
+background: rgba(0, 0, 0, 0.72);
+}
+
+.helpHotkeysCard {
+width: min(980px, 100%);
+max-height: min(88vh, 900px);
+overflow: hidden;
+display: flex;
+flex-direction: column;
+background: #2d2d2d;
+border: 1px solid #555;
+border-radius: 12px;
+box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.helpHotkeysHeader {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+padding: 14px 16px;
+border-bottom: 1px solid #444;
+background: #242424;
+}
+
+.helpHotkeysHeader h2 {
+margin: 0;
+font-size: 18px;
+}
+
+.helpHotkeysBody {
+padding: 16px;
+overflow: auto;
+display: grid;
+gap: 16px;
+}
+
+.helpHotkeysSection {
+background: #232323;
+border: 1px solid #3f3f3f;
+border-radius: 10px;
+padding: 12px 14px;
+}
+
+.helpHotkeysSection h3 {
+margin: 0 0 10px 0;
+font-size: 15px;
+}
+
+.helpHotkeysSection ul {
+margin: 0;
+padding-left: 18px;
+display: grid;
+gap: 6px;
+}
+
+.helpHotkeysSection li {
+line-height: 1.35;
+font-size: 13px;
+}
+
 .miniLabel {
 display: block;
 margin-top: 8px;

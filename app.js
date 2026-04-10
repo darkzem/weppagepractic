@@ -37,6 +37,11 @@ let editPanelBlock = document.getElementById("editPanelBlock");
 
 const gridButton = document.getElementById("toggleGrid");
 const mirrorButton = document.getElementById("mirrorToggle");
+const mirrorHorizontalToggle = document.getElementById("mirrorHorizontalToggle");
+const mirrorVerticalToggle = document.getElementById("mirrorVerticalToggle");
+const helpHotkeysToggleButton = document.getElementById("helpHotkeysToggle");
+const helpHotkeysModal = document.getElementById("helpHotkeysModal");
+const helpHotkeysCloseButton = document.getElementById("helpHotkeysClose");
 const importButton = document.getElementById("importPNG");
 const importPNGInput = document.getElementById("importPNGInput");
 const importNewFrameButton = document.getElementById("importPNGNewFrame");
@@ -294,6 +299,8 @@ let brushType = "pixel";
 let lastStandardBrushType = "pixel";
 let rectMode = "outline";
 let mirrorMode = false;
+let mirrorHorizontalEnabled = true;
+let mirrorVerticalEnabled = false;
 let onionSkinEnabled = true;
 let noiseEnabled = false;
 let noiseStrength = 28;
@@ -2128,7 +2135,7 @@ function stampCustomBrushAt(x, y, deferDisplayCachePatch = false) {
 }
 
 function shouldQueueCustomBrushStamps() {
-    return brushType === CUSTOM_BRUSH_TYPE && GRID_SIZE >= 256;
+    return brushType === CUSTOM_BRUSH_TYPE && GRID_SIZE >= 256 && !isVerticalMirrorActive();
 }
 
 function getQueuedCustomStampKey(x, y, mirror = false) {
@@ -7242,15 +7249,16 @@ function drawPixel(x, y) {
 
     if (brushType === CUSTOM_BRUSH_TYPE) {
         if (shouldQueueCustomBrushStamps()) {
-            queueCustomBrushPointWorkerStamp(x, y, mirrorMode);
+            queueCustomBrushPointWorkerStamp(x, y, isHorizontalMirrorActive());
             return;
         }
 
-        let changed = stampCustomBrushAt(x, y, GRID_SIZE >= 256);
+        let changed = false;
+        const mirrorTargets = getMirrorTargets(x, y);
 
-        if (mirrorMode) {
-            const mirrorX = GRID_SIZE - 1 - x;
-            if (stampCustomBrushAt(mirrorX, y, GRID_SIZE >= 256)) {
+        for (let i = 0; i < mirrorTargets.length; i++) {
+            const target = mirrorTargets[i];
+            if (stampCustomBrushAt(target.x, target.y, GRID_SIZE >= 256)) {
                 changed = true;
             }
         }
@@ -7261,13 +7269,8 @@ function drawPixel(x, y) {
 
                 if (cacheCtx) {
                     const fillState = { lastFillStyle: null };
-                    patchCustomStampToDisplayCacheContext(cacheCtx, x, y, fillState);
-
-                    if (mirrorMode) {
-                        const mirrorX = GRID_SIZE - 1 - x;
-                        if (mirrorX !== x) {
-                            patchCustomStampToDisplayCacheContext(cacheCtx, mirrorX, y, fillState);
-                        }
+                    for (let i = 0; i < mirrorTargets.length; i++) {
+                        patchCustomStampToDisplayCacheContext(cacheCtx, mirrorTargets[i].x, mirrorTargets[i].y, fillState);
                     }
                 } else {
                     currentFrameRenderCacheDirty = true;
@@ -7283,11 +7286,10 @@ function drawPixel(x, y) {
         return;
     }
 
-    applyBrushAt(x, y, color);
+    const mirrorTargets = getMirrorTargets(x, y);
 
-    if (mirrorMode) {
-        const mirrorX = GRID_SIZE - 1 - x;
-        applyBrushAt(mirrorX, y, color);
+    for (let i = 0; i < mirrorTargets.length; i++) {
+        applyBrushAt(mirrorTargets[i].x, mirrorTargets[i].y, color);
     }
 }
 
@@ -7301,7 +7303,10 @@ function drawCustomBrushLineBatch(x0, y0, x1, y1) {
     const maxSegmentStampCount = GRID_SIZE >= 512 ? 384 : 320;
 
     while (true) {
-        enqueueCustomStamp(x0, y0, mirrorMode);
+        const mirrorTargets = getMirrorTargets(x0, y0);
+        for (let i = 0; i < mirrorTargets.length; i++) {
+            enqueueCustomStamp(mirrorTargets[i].x, mirrorTargets[i].y, false);
+        }
         stampedCount += 1;
 
         if (x0 === x1 && y0 === y1) {
@@ -7862,30 +7867,36 @@ function drawBrushPreview(targetCtx = ctx) {
         }
 
         if (mirrorMode && currentTool !== "eyedropper") {
-            const mirrorX = GRID_SIZE - 1 - hoverPixel.x;
-            const mirrorStartX = Math.round((mirrorX - Math.floor(customStampBrush.width / 2)) * CELL_SIZE);
+            const mirrorTargets = getMirrorTargets(hoverPixel.x, hoverPixel.y).filter(
+                (target) => target.x !== hoverPixel.x || target.y !== hoverPixel.y
+            );
 
             targetCtx.strokeStyle = "#ffaa00";
 
-            if (customBrushPixelPerfectMode) {
-                const mirrorPixels = getCustomBrushPixelsAt(mirrorX, hoverPixel.y);
+            for (const target of mirrorTargets) {
+                const mirrorStartX = Math.round((target.x - Math.floor(customStampBrush.width / 2)) * CELL_SIZE);
+                const mirrorStartY = Math.round((target.y - Math.floor(customStampBrush.height / 2)) * CELL_SIZE);
 
-                for (const pixel of mirrorPixels) {
-                    const x = Math.round(pixel.x * CELL_SIZE);
-                    const y = Math.round(pixel.y * CELL_SIZE);
-                    const size = Math.max(1, Math.round(CELL_SIZE));
-                    targetCtx.strokeRect(x, y, size, size);
-                }
-            } else if (shouldUseCheapCustomBrushPreview()) {
-                targetCtx.strokeRect(mirrorStartX, startY, drawWidth, drawHeight);
-            } else {
-                const mirrorPixels = getCustomBrushPixelsAt(mirrorX, hoverPixel.y);
+                if (customBrushPixelPerfectMode) {
+                    const mirrorPixels = getCustomBrushPixelsAt(target.x, target.y);
 
-                for (const pixel of mirrorPixels) {
-                    const x = Math.round(pixel.x * CELL_SIZE);
-                    const y = Math.round(pixel.y * CELL_SIZE);
-                    const size = Math.max(1, Math.round(CELL_SIZE));
-                    targetCtx.strokeRect(x, y, size, size);
+                    for (const pixel of mirrorPixels) {
+                        const x = Math.round(pixel.x * CELL_SIZE);
+                        const y = Math.round(pixel.y * CELL_SIZE);
+                        const size = Math.max(1, Math.round(CELL_SIZE));
+                        targetCtx.strokeRect(x, y, size, size);
+                    }
+                } else if (shouldUseCheapCustomBrushPreview()) {
+                    targetCtx.strokeRect(mirrorStartX, mirrorStartY, drawWidth, drawHeight);
+                } else {
+                    const mirrorPixels = getCustomBrushPixelsAt(target.x, target.y);
+
+                    for (const pixel of mirrorPixels) {
+                        const x = Math.round(pixel.x * CELL_SIZE);
+                        const y = Math.round(pixel.y * CELL_SIZE);
+                        const size = Math.max(1, Math.round(CELL_SIZE));
+                        targetCtx.strokeRect(x, y, size, size);
+                    }
                 }
             }
         }
@@ -7906,11 +7917,17 @@ function drawBrushPreview(targetCtx = ctx) {
     targetCtx.strokeRect(startX, startY, drawWidth, drawHeight);
 
     if (mirrorMode && currentTool !== "eyedropper") {
-        const mirrorX = GRID_SIZE - 1 - hoverPixel.x;
-        const mirrorStartX = Math.round((mirrorX - Math.floor(brush.width / 2)) * CELL_SIZE);
+        const mirrorTargets = getMirrorTargets(hoverPixel.x, hoverPixel.y).filter(
+            (target) => target.x !== hoverPixel.x || target.y !== hoverPixel.y
+        );
 
         targetCtx.strokeStyle = "#ffaa00";
-        targetCtx.strokeRect(mirrorStartX, startY, drawWidth, drawHeight);
+
+        for (const target of mirrorTargets) {
+            const mirrorStartX = Math.round((target.x - Math.floor(brush.width / 2)) * CELL_SIZE);
+            const mirrorStartY = Math.round((target.y - Math.floor(brush.height / 2)) * CELL_SIZE);
+            targetCtx.strokeRect(mirrorStartX, mirrorStartY, drawWidth, drawHeight);
+        }
     }
 }
 
@@ -9758,6 +9775,75 @@ function redo() {
     applyHistoryState(redoStack.pop());
 }
 
+function isHorizontalMirrorActive() {
+    return mirrorMode && mirrorHorizontalEnabled;
+}
+
+function isVerticalMirrorActive() {
+    return mirrorMode && mirrorVerticalEnabled;
+}
+
+function getMirrorTargets(x, y) {
+    const targets = [];
+    const seen = new Set();
+
+    const pushTarget = (tx, ty) => {
+        if (tx < 0 || ty < 0 || tx >= GRID_SIZE || ty >= GRID_SIZE) return;
+        const key = `${tx},${ty}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        targets.push({ x: tx, y: ty });
+    };
+
+    pushTarget(x, y);
+
+    const mirrorX = GRID_SIZE - 1 - x;
+    const mirrorY = GRID_SIZE - 1 - y;
+
+    if (isHorizontalMirrorActive()) {
+        pushTarget(mirrorX, y);
+    }
+
+    if (isVerticalMirrorActive()) {
+        pushTarget(x, mirrorY);
+    }
+
+    if (isHorizontalMirrorActive() && isVerticalMirrorActive()) {
+        pushTarget(mirrorX, mirrorY);
+    }
+
+    return targets;
+}
+
+function updateMirrorUI() {
+    if (mirrorButton) {
+        mirrorButton.classList.toggle("activeTool", mirrorMode);
+    }
+
+    if (mirrorHorizontalToggle) {
+        mirrorHorizontalToggle.checked = mirrorHorizontalEnabled;
+    }
+
+    if (mirrorVerticalToggle) {
+        mirrorVerticalToggle.checked = mirrorVerticalEnabled;
+    }
+}
+
+function openHelpHotkeysModal() {
+    if (!helpHotkeysModal) return;
+    helpHotkeysModal.hidden = false;
+}
+
+function closeHelpHotkeysModal() {
+    if (!helpHotkeysModal) return;
+    helpHotkeysModal.hidden = true;
+}
+
+function toggleHelpHotkeysModal() {
+    if (!helpHotkeysModal) return;
+    helpHotkeysModal.hidden = !helpHotkeysModal.hidden;
+}
+
 function updateToolUI() {
     if (pencilButton) pencilButton.classList.remove("activeTool");
     if (lineButton) lineButton.classList.remove("activeTool");
@@ -9928,10 +10014,66 @@ if (eyedropperButton) eyedropperButton.onclick = () => setTool("eyedropper");
 if (mirrorButton) {
     mirrorButton.onclick = () => {
         if (isPlaying) return;
-        mirrorMode = !mirrorMode;
-        mirrorButton.classList.toggle("activeTool", mirrorMode);
+
+        if (mirrorMode) {
+            mirrorMode = false;
+        } else {
+            mirrorMode = true;
+            mirrorHorizontalEnabled = true;
+            mirrorVerticalEnabled = false;
+        }
+
+        updateMirrorUI();
         openFoldoutForElement(mirrorButton);
         refreshWorkspacePreview();
+    };
+}
+
+if (mirrorHorizontalToggle) {
+    mirrorHorizontalToggle.onchange = () => {
+        mirrorHorizontalEnabled = !!mirrorHorizontalToggle.checked;
+
+        if (!mirrorHorizontalEnabled && !mirrorVerticalEnabled) {
+            mirrorHorizontalEnabled = true;
+            mirrorHorizontalToggle.checked = true;
+        }
+
+        updateMirrorUI();
+        refreshWorkspacePreview();
+    };
+}
+
+if (mirrorVerticalToggle) {
+    mirrorVerticalToggle.onchange = () => {
+        mirrorVerticalEnabled = !!mirrorVerticalToggle.checked;
+
+        if (!mirrorHorizontalEnabled && !mirrorVerticalEnabled) {
+            mirrorVerticalEnabled = true;
+            mirrorVerticalToggle.checked = true;
+        }
+
+        updateMirrorUI();
+        refreshWorkspacePreview();
+    };
+}
+
+if (helpHotkeysToggleButton) {
+    helpHotkeysToggleButton.onclick = () => {
+        toggleHelpHotkeysModal();
+    };
+}
+
+if (helpHotkeysCloseButton) {
+    helpHotkeysCloseButton.onclick = () => {
+        closeHelpHotkeysModal();
+    };
+}
+
+if (helpHotkeysModal) {
+    helpHotkeysModal.onclick = (e) => {
+        if (e.target === helpHotkeysModal) {
+            closeHelpHotkeysModal();
+        }
     };
 }
 
@@ -10640,11 +10782,11 @@ canvas.addEventListener("pointerdown", (e) => {
         ditherOrigin = { x: pos.x, y: pos.y };
 
         if (brushType === CUSTOM_BRUSH_TYPE && shouldQueueCustomBrushStamps()) {
-            let changed = stampCustomBrushAt(pos.x, pos.y, GRID_SIZE >= 256);
+            let changed = false;
+            const mirrorTargets = getMirrorTargets(pos.x, pos.y);
 
-            if (mirrorMode) {
-                const mirrorX = GRID_SIZE - 1 - pos.x;
-                if (stampCustomBrushAt(mirrorX, pos.y, GRID_SIZE >= 256)) {
+            for (let i = 0; i < mirrorTargets.length; i++) {
+                if (stampCustomBrushAt(mirrorTargets[i].x, mirrorTargets[i].y, GRID_SIZE >= 256)) {
                     changed = true;
                 }
             }
@@ -10657,13 +10799,8 @@ canvas.addEventListener("pointerdown", (e) => {
 
                     if (cacheCtx) {
                         const fillState = { lastFillStyle: null };
-                        patchCustomStampToDisplayCacheContext(cacheCtx, pos.x, pos.y, fillState);
-
-                        if (mirrorMode) {
-                            const mirrorX = GRID_SIZE - 1 - pos.x;
-                            if (mirrorX !== pos.x) {
-                                patchCustomStampToDisplayCacheContext(cacheCtx, mirrorX, pos.y, fillState);
-                            }
+                        for (let i = 0; i < mirrorTargets.length; i++) {
+                            patchCustomStampToDisplayCacheContext(cacheCtx, mirrorTargets[i].x, mirrorTargets[i].y, fillState);
                         }
                     }
 
